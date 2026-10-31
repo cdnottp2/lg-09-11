@@ -632,3 +632,11 @@ body.portrait .dlrow .dlt { font-size: 15px; }
 body.portrait .dlrow .dlst { font-size: 12px; }
 body.portrait .dlrow .dlbtns .btn { margin: 0 6px 6px 0; }
 body.portrait .ep .edl { font-size: 11px; margin-left: 8px; }
+
+/* gestos do player (celular) */
+body.phone #player:not(.mini) { touch-action: none; }
+#gest { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); min-width: 150px; padding: 12px 18px; border-radius: 14px; background: rgba(15,22,36,.82); color: #fff; text-align: center; font-size: 18px; font-weight: 600; pointer-events: none; z-index: 5; }
+#gest.hidden { display: none; }
+#gest .gest-bar { height: 6px; margin-top: 10px; border-radius: 3px; background: rgba(255,255,255,.25); overflow: hidden; }
+#gest #gest-f { height: 100%; background: #fff; }
+#gest.nobar .gest-bar { display: none; }

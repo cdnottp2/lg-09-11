@@ -35,10 +35,15 @@ function makeNative() {
       }));
     },
     dlRemove: function (id) { removed.push(Number(id)); delete dlState[Number(id)]; return true; },
-    dlFree: function () { return '5300000000'; }
+    dlFree: function () { return '5300000000'; },
+    getBrightness: function () { return '0.5'; },
+    setBrightness: function (v) { gest.bri.push(v); },
+    getVolume: function () { return '0.5'; },
+    setVolume: function (v) { gest.vol.push(v); }
   };
 }
 
+var gest = { bri: [], vol: [] };
 var memRef = null;
 function open(seed) {
   var vc = new jsdom.VirtualConsole(), errors = [];
@@ -142,9 +147,22 @@ listen(api).then(function () {
     T.btn('Assistir', '.dlrow').click();
     assert.strictEqual($('#video').getAttribute('src'), LOCAL + 'iptv-m-501.mkv', 'toca do arquivo no celular');
     vd = 3600; vt = 900;
+    function touch(type, x, y) {
+      var ev = new w.Event(type, { bubbles: true, cancelable: true });
+      ev.touches = type === 'touchend' ? [] : [{ clientX: x, clientY: y }];
+      $('#video').dispatchEvent(ev);
+    }
+    touch('touchstart', 20, 40); touch('touchmove', 20, 30); touch('touchmove', 20, 20); touch('touchend');
+    assert.ok(gest.bri.length >= 1 && gest.bri[gest.bri.length - 1] > 0.5 && gest.vol.length === 0, 'esquerda para cima aumenta o brilho');
+    assert.ok(/Brilho/.test($('#gest').textContent), 'mostra o indicador de brilho');
+    touch('touchstart', 80, 10); touch('touchmove', 80, 25); touch('touchmove', 80, 40); touch('touchend');
+    assert.ok(gest.vol.length >= 1 && gest.vol[gest.vol.length - 1] < 0.5, 'direita para baixo diminui o volume');
+    touch('touchstart', 50, 25); touch('touchmove', 60, 25); touch('touchmove', 80, 25); touch('touchend');
+    assert.strictEqual(vt, 954, 'arrastar de lado avança 54 s: ' + vt);
+    step('gestos: brilho (esq.), volume (dir.) e avançar/voltar');
     key(413);   // Parar
     assert.ok($('#player').classList.contains('hidden'), 'player fechou');
-    assert.ok(T.ls('resume')['m:501'] && T.ls('resume')['m:501'].t === 900, 'o ponto de "continuar assistindo" é salvo');
+    assert.ok(T.ls('resume')['m:501'] && T.ls('resume')['m:501'].t === 954, 'o ponto de "continuar assistindo" é salvo');
     step('tocar do arquivo baixado e salvar o ponto');
     // se o sistema não conhece mais o download (cancelado nas notificações), ele sai da lista; consulta que falha não apaga nada
     var id = Object.keys(dlState)[0], keep = dlState[id];

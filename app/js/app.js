@@ -1134,6 +1134,71 @@
     });
   })();
 
+  /* gestos no player (celular): arrastar na metade esquerda muda o brilho, na direita o volume;
+     arrastar de lado avança/volta (filmes e episódios) */
+  (function () {
+    var hud = null, st = null, hideT = null;
+    function nat() { return window.NativeApp || null; }
+    function enabled() { return !!(nat() && nat().setVolume) && document.body.classList.contains('phone'); }
+    function num(f) { try { var v = parseFloat(f()); return isFinite(v) ? v : 0.5; } catch (e) { return 0.5; } }
+    function show(label, frac, text) {
+      if (!hud) {
+        hud = h('div', { id: 'gest', cls: 'hidden' }, [h('div', { id: 'gest-t' }), h('div', { cls: 'gest-bar' }, [h('div', { id: 'gest-f' })])]);
+        $('player').appendChild(hud);
+      }
+      hud.classList.remove('hidden');
+      $('gest-t').textContent = label + (text != null ? ' ' + text : '');
+      $('gest-f').style.width = (frac == null ? 0 : Math.round(frac * 100)) + '%';
+      hud.classList.toggle('nobar', frac == null);
+      clearTimeout(hideT);
+    }
+    function hideSoon() { clearTimeout(hideT); hideT = setTimeout(function () { if (hud) { hud.classList.add('hidden'); } }, 700); }
+    function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+    function ignore(t) {
+      return !t || !t.closest || t.closest('[data-act], .track, #tracks, #osd-tracks, #mini-x, button');
+    }
+    var pl = $('player');
+    pl.addEventListener('touchstart', function (e) {
+      st = null;
+      if (!enabled() || S.mode !== 'player' || S.mini || !S.ctx || !e.touches || e.touches.length !== 1 || ignore(e.target)) { return; }
+      var r = pl.getBoundingClientRect(), x = e.touches[0].clientX - r.left;
+      st = { x: e.touches[0].clientX, y: e.touches[0].clientY, side: x < r.width / 2 ? 'L' : 'R', w: r.width || 1, h: r.height || 1, kind: '', start: 0, t0: 0, tgt: 0 };
+    }, { passive: true });
+    pl.addEventListener('touchmove', function (e) {
+      if (!st || !e.touches[0]) { return; }
+      var dx = e.touches[0].clientX - st.x, dy = e.touches[0].clientY - st.y, vod = S.ctx && S.ctx.kind !== 'live';
+      if (!st.kind) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < 14) { return; }
+        if (Math.abs(dy) >= Math.abs(dx)) {
+          st.kind = st.side === 'L' ? 'bri' : 'vol';
+          st.start = clamp(num(st.kind === 'bri' ? nat().getBrightness : nat().getVolume), 0, 1);
+        } else if (vod && isFinite(Player.duration()) && Player.duration() > 0) {
+          st.kind = 'seek'; st.t0 = Player.time();
+        } else { st = null; return; }
+      }
+      if (e.cancelable) { e.preventDefault(); }
+      if (st.kind === 'seek') {
+        var d = Player.duration();
+        st.tgt = clamp(st.t0 + (dx / st.w) * 180, 0, d);
+        var diff = Math.round(st.tgt - st.t0);
+        show((diff >= 0 ? '+' : '−') + Math.abs(diff) + ' s', null, '· ' + Core.fmtTime(st.tgt));
+        return;
+      }
+      var v = clamp(st.start - dy / (st.h * 0.7), 0, 1);
+      try {
+        if (st.kind === 'bri') { nat().setBrightness(Math.max(0.02, v)); } else { nat().setVolume(v); }
+      } catch (err) {}
+      show(st.kind === 'bri' ? 'Brilho' : 'Volume', v, Math.round(v * 100) + '%');
+    }, { passive: false });
+    function end() {
+      if (st && st.kind === 'seek' && st.tgt !== st.t0) { Player.seekTo(st.tgt); learnSkip(); updateBar(st.tgt, Player.duration()); }
+      if (st && st.kind) { hideSoon(); }
+      st = null;
+    }
+    pl.addEventListener('touchend', end, { passive: true });
+    pl.addEventListener('touchcancel', function () { st = null; hideSoon(); }, { passive: true });
+  })();
+
   function renderFavs() {
     showItems(favList(), { cards: true, empty: 'Nenhum favorito ainda. Aperte o botão vermelho (ou segure o dedo) sobre um item.' });
     var first = S.listHost.querySelector('.f');
@@ -1629,7 +1694,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.16.0']
+      ['Versão do app', '1.17.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -1965,6 +2030,8 @@
   /* app Android no celular: o player abre em tela cheia (deitado) e, ao sair, volta à orientação do aparelho */
   function nativeFull(on) {
     try { if (window.NativeApp && window.NativeApp.setFullscreen) { window.NativeApp.setFullscreen(!!on); } } catch (e) {}
+    // o brilho ajustado por gesto vale só dentro do player
+    if (!on) { try { if (window.NativeApp && window.NativeApp.setBrightness) { window.NativeApp.setBrightness(-1); } } catch (e2) {} }
   }
 
   function syncNative() {

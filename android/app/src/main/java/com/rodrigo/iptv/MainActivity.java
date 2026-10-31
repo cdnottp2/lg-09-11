@@ -8,6 +8,8 @@ import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.media.AudioManager;
+import android.provider.Settings;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -125,6 +127,58 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void setPlaying(boolean on) {
             playing = on;
+        }
+
+        /* ---- gestos do player: brilho (só desta janela) e volume do aparelho ---- */
+
+        /** Brilho atual de 0 a 1 (texto). */
+        @JavascriptInterface
+        public String getBrightness() {
+            float b = getWindow().getAttributes().screenBrightness;
+            if (b < 0) {
+                try {
+                    b = Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS) / 255f;
+                } catch (Throwable t) {
+                    b = 0.5f;
+                }
+            }
+            return String.valueOf(b);
+        }
+
+        /** 0..1 ajusta o brilho desta tela; valor negativo volta ao brilho do sistema. */
+        @JavascriptInterface
+        public void setBrightness(final float v) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    WindowManager.LayoutParams lp = getWindow().getAttributes();
+                    lp.screenBrightness = v < 0 ? WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE : Math.min(1f, v);
+                    getWindow().setAttributes(lp);
+                }
+            });
+        }
+
+        /** Volume de mídia de 0 a 1 (texto). */
+        @JavascriptInterface
+        public String getVolume() {
+            try {
+                AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+                return String.valueOf(max > 0 ? am.getStreamVolume(AudioManager.STREAM_MUSIC) / (float) max : 0.5f);
+            } catch (Throwable t) {
+                return "0.5";
+            }
+        }
+
+        @JavascriptInterface
+        public void setVolume(float v) {
+            try {
+                AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+                am.setStreamVolume(AudioManager.STREAM_MUSIC, Math.round(Math.max(0f, Math.min(1f, v)) * max), 0);
+            } catch (Throwable t) {
+                // sem permissão ou sem áudio: ignora
+            }
         }
 
         /* ---- downloads para assistir offline (celular) ---- */
