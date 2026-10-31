@@ -45,6 +45,7 @@
     star: STAR,
     starfill: STAR.replace('<path ', '<path fill="currentColor" '),
     menu: '<path d="M4 6.5h16M4 12h16M4 17.5h16"/>',
+    dl: '<path d="M12 4v11M7.5 11l4.5 4.5 4.5-4.5M5 20h14"/>',
     settings: '<path d="M4 7h7M15 7h5M4 12h3M11 12h9M4 17h9M17 17h3"/><circle cx="13" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="15" cy="17" r="2"/>',
     play: '<path fill="currentColor" d="M7 4l13 8-13 8z"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
@@ -317,6 +318,215 @@
     if (sec) { Nav.focus(S.pageEl.querySelector('[data-sec="' + sec + '"]')); }
   }
 
+  /* ---------- downloads para assistir offline (só no app Android do celular) ---------- */
+
+  function hasDl() { return !!(window.NativeApp && window.NativeApp.dlStart && document.body.classList.contains('phone')); }
+  function dlAll() { return store.get('dl', {}); }
+  function dlSave(m) { store.set('dl', m); }
+  function dlWifiOnly() { return store.get('dlwifi', true) !== false; }
+  function dlCount() { return Object.keys(dlAll()).length; }
+
+  function fmtBytes(n) {
+    n = Number(n) || 0;
+    if (n >= 1e9) { return (n / 1e9).toFixed(1).replace('.', ',') + ' GB'; }
+    if (n >= 1e6) { return Math.round(n / 1e6) + ' MB'; }
+    return Math.max(0, Math.round(n / 1e3)) + ' KB';
+  }
+
+  /* consulta o Android; null = a consulta falhou (nesse caso nada é apagado da lista) */
+  function dlQuery(ids) {
+    try {
+      var r = window.NativeApp.dlStatus(ids.join(','));
+      var l = r ? JSON.parse(r) : null;
+      return Array.isArray(l) ? l : null;
+    } catch (e) { return null; }
+  }
+
+  /* situação atual de cada download da lista; some da lista o que o sistema não conhece mais (cancelado, arquivo apagado) */
+  function dlRefresh() {
+    var m = dlAll(), rks = Object.keys(m), st = {}, changed = false;
+    if (!rks.length || !hasDl()) { return st; }
+    var res = dlQuery(rks.map(function (k) { return m[k].id; }));
+    if (!res) { return S.dlState || st; }
+    var byId = {};
+    res.forEach(function (o) { byId[o.id] = o; });
+    rks.forEach(function (k) {
+      var o = byId[m[k].id];
+      if (o) { st[k] = o; } else { delete m[k]; changed = true; }
+    });
+    if (changed) { dlSave(m); }
+    S.dlState = st;
+    return st;
+  }
+
+  function dlPct(st) { return st && st.t > 0 ? Math.max(0, Math.min(100, Math.round(st.b / st.t * 100))) : 0; }
+
+  function dlStateText(st) {
+    if (!st) { return ''; }
+    if (st.s === 'done') { return 'Baixado · ' + fmtBytes(st.t || st.b); }
+    if (st.s === 'running') { return st.t > 0 ? 'Baixando ' + dlPct(st) + '% · ' + fmtBytes(st.b) + ' de ' + fmtBytes(st.t) : 'Baixando…'; }
+    if (st.s === 'pending') { return 'Na fila'; }
+    if (st.s === 'paused') { return st.r === 3 ? 'Aguardando Wi-Fi' : (st.r === 2 ? 'Aguardando conexão' : (st.r === 1 ? 'Tentando de novo…' : 'Pausado')); }
+    return 'Falhou';
+  }
+
+  /* endereço do arquivo no celular, se este conteúdo já foi baixado por completo */
+  function dlLocalUrl(rk) {
+    if (!hasDl() || !rk) { return ''; }
+    var en = dlAll()[rk];
+    if (!en) { return ''; }
+    var res = dlQuery([en.id]), i;
+    for (i = 0; res && i < res.length; i++) {
+      if (res[i].id === en.id && res[i].s === 'done' && res[i].u) { return res[i].u; }
+    }
+    return '';
+  }
+
+  function dlStart(it, ep, quiet) {
+    var rk = ep ? 'e:' + ep.id : 'm:' + it.id, m = dlAll(), url = ep ? ep.url : it.url;
+    if (m[rk]) { if (!quiet) { toast('Já está nos downloads', 2000); } return false; }
+    if (!/^https?:\/\//i.test(url || '') || /\.m3u8(\?|$)/i.test(url)) { if (!quiet) { toast('Este conteúdo não pode ser baixado', 3500); } return false; }
+    var ext = ((String(url).split('?')[0].match(/\.([A-Za-z0-9]{2,4})$/) || [0, 'mp4'])[1]).toLowerCase();
+    var title = it.name + (ep ? ' · T' + ep.season + ' E' + ep.num : '');
+    var id = NaN;
+    try { id = parseInt(window.NativeApp.dlStart(url, 'iptv-' + rk.replace(':', '-') + '.' + ext, title, dlWifiOnly(), navigator.userAgent || ''), 10); } catch (e) {}
+    if (!(id > 0)) { if (!quiet) { toast('Não foi possível iniciar o download', 3500); } return false; }
+    m[rk] = { rk: rk, id: id, kind: ep ? 'ep' : 'movie', item: slimItem(it), ep: ep ? slimEp(ep) : null, title: title, at: Date.now() };
+    dlSave(m);
+    if (!quiet) { toast('Baixando: ' + title + (dlWifiOnly() ? ' (só no Wi-Fi)' : ''), 3500); }
+    return true;
+  }
+
+  function dlRemove(rk) {
+    var m = dlAll(), en = m[rk];
+    if (!en) { return; }
+    try { window.NativeApp.dlRemove(String(en.id)); } catch (e) {}
+    delete m[rk];
+    dlSave(m);
+  }
+
+  function openDownloads() {
+    if (S.drawerOpen) { closeDrawer(true); }
+    if (S.detail) { closeDetailQuiet(); S.mode = 'browse'; Nav.setScope($('app')); }
+    selectSection('dl');
+  }
+
+  /* toca o que foi baixado (funciona sem internet); os episódios baixados da mesma série seguem em sequência */
+  function dlPlay(en) {
+    if (en.kind !== 'ep') { startPlay({ kind: 'movie', item: en.item }); return; }
+    var m = dlAll(), st = dlRefresh(), eps = [], idx = 0;
+    Object.keys(m).forEach(function (k) {
+      var x = m[k];
+      if (x.kind === 'ep' && x.item.id === en.item.id && x.item.type === en.item.type && st[k] && st[k].s === 'done') { eps.push(x.ep); }
+    });
+    eps.sort(function (a, b) { return (parseInt(a.season, 10) - parseInt(b.season, 10)) || (parseInt(a.num, 10) - parseInt(b.num, 10)); });
+    eps.forEach(function (e, i) { if (e.id === en.ep.id) { idx = i; } });
+    startPlay({ kind: 'ep', item: en.item, eps: eps, idx: idx });
+  }
+
+  function dlBtn(it) {
+    var rk = 'm:' + it.id, en = dlAll()[rk];
+    if (!en) { return h('button', { cls: 'f btn', on: { click: function () { if (dlStart(it, null)) { buildMovieButtons(); } } } }, [icon('dl', 26), 'Baixar']); }
+    return h('button', { cls: 'f btn', on: { click: openDownloads } }, [icon('dl', 26), (dlRefresh()[rk] && dlRefresh()[rk].s === 'done') ? 'Baixado' : 'Baixando…']);
+  }
+
+  function dlSeason() {
+    var D = S.detail, i, s = null, n = 0;
+    for (i = 0; i < D.seasons.length; i++) { if (D.seasons[i].n === D.season) { s = D.seasons[i]; } }
+    if (!s) { return; }
+    s.episodes.forEach(function (ep) { if (dlStart(D.item, ep, true)) { n++; } });
+    toast(n ? n + (n > 1 ? ' episódios' : ' episódio') + ' na fila (Temporada ' + D.season + ')' + (dlWifiOnly() ? ' · só no Wi-Fi' : '') : 'Esta temporada já está nos downloads', 3500);
+    renderEps();
+  }
+
+  /* tela Downloads: lista o que foi baixado e o andamento; atualiza sozinha enquanto está aberta */
+  function renderDownloads() {
+    var page = S.pageEl;
+    page.className = 'page scroll settings dls';
+    var wifiSw = h('span', { cls: 'sw' + (dlWifiOnly() ? ' on' : '') }, [h('span', { cls: 'knob' })]);
+    var info = h('div', { cls: 'swd dlfree' });
+    var list = h('div', { cls: 'dllist' });
+    page.appendChild(h('div', { cls: 'f swrow', on: { click: function () {
+      store.set('dlwifi', !dlWifiOnly());
+      wifiSw.classList.toggle('on', dlWifiOnly());
+    } } }, [h('div', { cls: 'swtxt' }, [h('div', { cls: 'swl', text: 'Baixar só no Wi-Fi' }),
+      h('div', { cls: 'swd', text: 'Vale para os próximos downloads. Desligado, usa também os dados móveis.' })]), wifiSw]));
+    page.appendChild(info);
+    page.appendChild(list);
+
+    var lastSig = null, rows = {};
+    function confirmBtn(label, fn) {
+      var b = h('button', { cls: 'f btn', text: label }), t = null;
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (t) { clearTimeout(t); t = null; fn(); return; }
+        b.textContent = 'Toque de novo para apagar';
+        t = setTimeout(function () { t = null; b.textContent = label; }, 3000);
+      });
+      return b;
+    }
+    function rebuild(keys, m, st) {
+      list.innerHTML = '';
+      rows = {};
+      if (!keys.length) { list.appendChild(h('div', { cls: 'empty', text: 'Nada baixado ainda. Abra um filme ou série e toque em Baixar.' })); return; }
+      keys.forEach(function (k) {
+        var en = m[k], o = st[k], txt = h('div', { cls: 'dlst' }), fill = h('div', { cls: 'fill' });
+        var btns = h('div', { cls: 'dlbtns' });
+        if (o && o.s === 'done') { btns.appendChild(h('button', { cls: 'f btn primary', on: { click: function () { dlPlay(en); } } }, [icon('play', 26), 'Assistir'])); }
+        if (!o || o.s === 'failed') {
+          btns.appendChild(h('button', { cls: 'f btn primary', text: 'Tentar de novo', on: { click: function () {
+            dlRemove(k);
+            var ok = dlStart(en.item, en.ep, false);
+            lastSig = null; paint();
+            return ok;
+          } } }));
+        }
+        btns.appendChild(confirmBtn('Apagar', function () { dlRemove(k); lastSig = null; paint(); }));
+        rows[k] = { txt: txt, fill: fill };
+        list.appendChild(h('div', { cls: 'dlrow' }, [
+          h('div', { cls: 'dlt', text: en.title }), txt,
+          h('div', { cls: 'dlbar' }, [fill]),
+          btns
+        ]));
+      });
+      Nav.focus(list.querySelector('.f') || S.headEl.querySelector('.f'));
+    }
+    function paint() {
+      var st = dlRefresh(), m = dlAll();
+      var keys = Object.keys(m).sort(function (a, b) { return m[b].at - m[a].at; });
+      var sig = keys.map(function (k) { return k + ':' + (st[k] ? st[k].s : '?'); }).join('|');
+      if (sig !== lastSig) { lastSig = sig; rebuild(keys, m, st); }
+      keys.forEach(function (k) {
+        var r = rows[k], o = st[k];
+        if (!r) { return; }
+        r.txt.textContent = o ? dlStateText(o) : 'Não encontrado';
+        r.fill.style.width = (o && o.s === 'done' ? 100 : dlPct(o)) + '%';
+      });
+      var free = -1;
+      try { free = parseFloat(window.NativeApp.dlFree()); } catch (e) {}
+      info.textContent = free >= 0 ? 'Espaço livre no celular: ' + fmtBytes(free) : '';
+    }
+    paint();
+    if (S.dlTimer) { clearInterval(S.dlTimer); }
+    S.dlTimer = setInterval(function () {
+      if (S.section !== 'dl' || !document.body.contains(list)) { clearInterval(S.dlTimer); S.dlTimer = null; return; }
+      paint();
+    }, 2000);
+  }
+
+  /* sem internet ao abrir: entra direto nos downloads */
+  function showOffline() {
+    S.offline = true;
+    S.provider = null;
+    showBrowse();
+  }
+
+  function reconnect() {
+    S.offline = false;
+    var cfg = store.get('cfg', null) || S.draft;
+    if (cfg && cfg.server) { S.cfg = cfg; connect(cfg, {}); } else { showLogin(); }
+  }
+
   /* ---------- perfis ---------- */
 
   var PCOLORS = ['#3ab4e0', '#e0603a', '#8a5be0', '#3ab87a', '#e0b43a', '#e03a8a'];
@@ -471,6 +681,7 @@
       h('div', { cls: 'lbl', text: 'Usuário' }), iUser,
       h('div', { cls: 'lbl', text: 'Senha' }), iPass,
       btn,
+      hasDl() && dlCount() ? h('button', { cls: 'f btn', text: 'Ver downloads (offline)', on: { click: showOffline } }) : null,
       canCancel ? h('button', { cls: 'f btn', text: 'Cancelar', on: { click: function () { showBrowse(); selectSection('settings'); } } }) : null,
       err
     ]));
@@ -492,6 +703,7 @@
     }).then(function (r) {
       if (!r.info.ok) { throw new Error('Usuário ou senha inválidos (ou conta inativa).'); }
       S.provider = r.prov; S.info = r.info;
+      S.offline = false;
       S.cfg = cfg;
       store.set('cfg', cfg);
       loading(false);
@@ -502,6 +714,11 @@
     }).then(null, function (e) {
       loading(false);
       S.provider = null;
+      if (o && o.boot && e && e.status === 0 && hasDl() && dlCount()) {   // abriu sem internet: vai direto aos downloads
+        showOffline();
+        toast('Sem conexão: abrindo seus downloads', 3500);
+        return;
+      }
       var m = (e && e.message) ? e.message : String(e);
       if (e && e.status === 0) { m += ' — confira o endereço do servidor e a internet da TV.'; }
       if (e && e.detail) { m += '\n[' + e.detail + ']'; }
@@ -519,7 +736,7 @@
 
   /* ---------- estrutura: menu inicial + uma tela por seção ---------- */
 
-  var SECT = { live: 'TV ao vivo', movie: 'Filmes', series: 'Séries', search: 'Buscar', fav: 'Favoritos', settings: 'Configurações' };
+  var SECT = { live: 'TV ao vivo', movie: 'Filmes', series: 'Séries', search: 'Buscar', fav: 'Favoritos', settings: 'Configurações', dl: 'Downloads' };
 
   function showBrowse() {
     S.mode = 'browse';
@@ -534,8 +751,8 @@
     buildDrawer();
     Nav.setScope(app);
     S.hubFocus = null;
-    selectSection('home');
-    cloudSoon(400);
+    selectSection(S.offline ? 'dl' : 'home');
+    if (!S.offline) { cloudSoon(400); }
   }
 
   /* ---------- menu lateral (hambúrguer): clima, relógio e Configurações ---------- */
@@ -550,7 +767,8 @@
       S.wxEl,
       h('div', { cls: 'drawer-meta' }, [S.drawClockEl, S.drawSubEl]),
       h('button', { cls: 'f btn drawer-settings', type: 'button',
-        on: { click: function () { closeDrawer(true); selectSection('settings'); } } }, [icon('settings', 26), 'Configurações'])
+        on: { click: function () { closeDrawer(true); selectSection('settings'); } } }, [icon('settings', 26), 'Configurações']),
+      hasDl() ? h('button', { cls: 'f btn drawer-dl', type: 'button', on: { click: openDownloads } }, [icon('dl', 26), 'Downloads']) : null
     ]);
     S.drawerEl = h('div', { cls: 'drawer hidden' }, [
       h('div', { cls: 'drawer-scrim', on: { click: function () { closeDrawer(); } } }), panel
@@ -602,6 +820,13 @@
       return;
     }
     hd.className = 'sechead';
+    if (S.offline) {
+      hd.appendChild(h('div', { cls: 'sectitle' }, [icon('dl', 44), 'Downloads · offline']));
+      hd.appendChild(h('button', { cls: 'f btn', text: 'Conectar', on: { click: reconnect } }));
+      hd.appendChild(S.clockEl);
+      updateClock();
+      return;
+    }
     hd.appendChild(h('button', { cls: 'f btn backbtn', on: { click: headBack } },
       [icon('back', 26), S.backTo && S.backTo !== 'home' ? 'Voltar' : 'Menu']));
     hd.appendChild(h('div', { cls: 'sectitle' }, [icon(sec, 44), SECT[sec]]));
@@ -617,6 +842,8 @@
 
   function selectSection(sec, opts) {
     opts = opts || {};
+    if (S.dlTimer) { clearInterval(S.dlTimer); S.dlTimer = null; }
+    if (S.offline && sec !== 'dl') { sec = 'dl'; }
     S.section = sec;
     S.backTo = opts.backTo || 'home';
     if (sec !== 'home') { S.hubFocus = sec === 'search' && opts.backTo ? opts.backTo : sec; }
@@ -634,6 +861,7 @@
 
     if (sec === 'home') { renderHome(); cloudSoon(0, true); return; }
     Nav.focus(S.headEl.querySelector('.f'));
+    if (sec === 'dl') { renderDownloads(); return; }
     if (sec === 'settings') { renderSettings(); return; }
     if (sec === 'search') { buildContentOnly(); renderSearch(); return; }
     if (sec === 'fav') { buildContentOnly(); renderFavs(); return; }
@@ -1073,7 +1301,7 @@
 
     var want = S.hubFocus, target = null;
     if (want === 'cont') { target = page.querySelector('.lcard'); }
-    else if (want === 'settings') { target = S.headEl.querySelector('.menubtn'); }
+    else if (want === 'settings' || want === 'dl') { target = S.headEl.querySelector('.menubtn'); }
     else if (want) { target = S.mainEl.querySelector('[data-sec="' + want + '"]'); }
     Nav.focus(target || page.querySelector('.hubtab, .hubtile'));
   }
@@ -1401,7 +1629,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.15.2']
+      ['Versão do app', '1.16.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -1649,6 +1877,7 @@
       D.btns.appendChild(playBtn('Assistir', function () { startPlay({ kind: 'movie', item: it }); }));
     }
     D.btns.appendChild(favBtn(it));
+    if (hasDl()) { D.btns.appendChild(dlBtn(it)); }
     D.btns.appendChild(backBtn());
     Nav.focusFirst();
   }
@@ -1664,6 +1893,7 @@
         function () { playEpisode(first); }));
     }
     D.btns.appendChild(favBtn(it));
+    if (hasDl()) { D.btns.appendChild(h('button', { cls: 'f btn', on: { click: dlSeason } }, [icon('dl', 26), 'Baixar temporada'])); }
     D.btns.appendChild(backBtn());
     Nav.focusFirst();
   }
@@ -1684,12 +1914,23 @@
     D.epsEl.innerHTML = '';
     for (i = 0; i < D.seasons.length; i++) { if (D.seasons[i].n === D.season) { s = D.seasons[i]; } }
     if (!s) { D.epsEl.appendChild(h('div', { cls: 'empty', text: 'Sem episódios.' })); return; }
+    var dm = hasDl() ? dlAll() : {}, dst = hasDl() ? dlRefresh() : {};
     s.episodes.forEach(function (ep) {
-      var r = S.resume['e:' + ep.id];
+      var r = S.resume['e:' + ep.id], rk = 'e:' + ep.id, mark = null;
+      if (hasDl()) {
+        if (dm[rk]) { mark = h('div', { cls: 'edl', text: dst[rk] && dst[rk].s === 'done' ? 'baixado' : 'baixando…' }); }
+        else {
+          mark = h('button', { cls: 'f epdl', type: 'button', title: 'Baixar', 'aria-label': 'Baixar', on: { click: function (e) {
+            e.stopPropagation();
+            if (dlStart(D.item, ep)) { renderEps(); }
+          } } }, [icon('dl', 22)]);
+        }
+      }
       D.epsEl.appendChild(h('div', { cls: 'f ep', on: { click: function () { playEpisode(ep); } } }, [
         h('div', { cls: 'en', text: 'E' + ep.num }),
         h('div', { cls: 'et', text: ep.title }),
-        h('div', { cls: 'ed', text: r && r.t > 30 ? 'em andamento · ' + Core.fmtTime(r.t) : (ep.duration || '') })
+        h('div', { cls: 'ed', text: r && r.t > 30 ? 'em andamento · ' + Core.fmtTime(r.t) : (ep.duration || '') }),
+        mark
       ]));
     });
   }
@@ -1818,6 +2059,8 @@
       }
       pushHist(it);
       logo = it.logo;
+      var lu = dlLocalUrl(c.rk);   // já baixado: toca do celular (funciona sem internet)
+      if (lu) { url = lu; }
       var r = S.resume[c.rk];
       if (!fromStart && r && r.t > 30 && r.t < r.d - 45) { o.startAt = r.t; }
     }
@@ -2193,7 +2436,7 @@
     if (S.mode === 'detail') { closeDetail(); return; }
     if (S.mode === 'browse') {
       if (S.drawerOpen) { closeDrawer(); return; }
-      if (S.section !== 'home') {
+      if (S.section !== 'home' && !S.offline) {
         var cur = Nav.current();
         if (S.catsEl && S.contentEl && cur && S.contentEl.contains(cur)) {
           var on = S.catsEl.querySelector('.cat.on');

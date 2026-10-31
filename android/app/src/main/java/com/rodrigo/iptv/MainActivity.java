@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.UiModeManager;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -32,6 +33,7 @@ public class MainActivity extends Activity {
     private boolean pageReady = false;
     private volatile boolean playing = false;   // há vídeo tocando (informado pela página)
     private boolean pipActive = false;
+    private Downloads downloads;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @SuppressWarnings("deprecation")
@@ -125,6 +127,36 @@ public class MainActivity extends Activity {
             playing = on;
         }
 
+        /* ---- downloads para assistir offline (celular) ---- */
+
+        /** Enfileira o download. Devolve o id (texto) ou "-1" se falhou. */
+        @JavascriptInterface
+        public String dlStart(String url, String fileName, String title, boolean wifiOnly, String userAgent) {
+            askNotificationPermission();
+            return String.valueOf(dl().start(url, fileName, title, wifiOnly, userAgent));
+        }
+
+        /** Situação dos downloads: recebe ids separados por vírgula, devolve JSON (ou null se a consulta falhou). */
+        @JavascriptInterface
+        public String dlStatus(String idsCsv) {
+            return dl().status(parseIds(idsCsv));
+        }
+
+        @JavascriptInterface
+        public boolean dlRemove(String id) {
+            try {
+                return dl().remove(Long.parseLong(id.trim()));
+            } catch (Throwable t) {
+                return false;
+            }
+        }
+
+        /** Espaço livre em bytes (texto), "-1" se desconhecido. */
+        @JavascriptInterface
+        public String dlFree() {
+            return String.valueOf(dl().freeBytes());
+        }
+
         @JavascriptInterface
         public void exit() {
             runOnUiThread(new Runnable() {
@@ -134,6 +166,50 @@ public class MainActivity extends Activity {
                 }
             });
         }
+    }
+
+    private synchronized Downloads dl() {
+        if (downloads == null) {
+            downloads = new Downloads(this);
+        }
+        return downloads;
+    }
+
+    private static long[] parseIds(String csv) {
+        if (csv == null || csv.trim().length() == 0) {
+            return new long[0];
+        }
+        String[] parts = csv.split(",");
+        long[] tmp = new long[parts.length];
+        int n = 0;
+        for (String p : parts) {
+            try {
+                tmp[n] = Long.parseLong(p.trim());
+                n++;
+            } catch (NumberFormatException ignored) {
+                // id inválido: ignora
+            }
+        }
+        long[] out = new long[n];
+        System.arraycopy(tmp, 0, out, 0, n);
+        return out;
+    }
+
+    /** Android 13+: sem a permissão de notificações o download funciona, mas o progresso não aparece na barra. */
+    @SuppressLint("NewApi")
+    private void askNotificationPermission() {
+        if (Build.VERSION.SDK_INT < 33) {
+            return;
+        }
+        if (checkSelfPermission("android.permission.POST_NOTIFICATIONS") == PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 77);
+            }
+        });
     }
 
     private boolean detectTv() {

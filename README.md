@@ -14,6 +14,9 @@ Servidor, usuário e senha (Xtream Codes). Se algo der errado, os campos continu
 - **Configurações** (pelo menu lateral): dados da conta, **editar servidor**, chaves para **reproduzir o último conteúdo ao abrir o app**, **ocultar canais SD** e **ocultar canais HD** (FHD e 4K continuam), e a **cidade do clima** (busca pelo nome).
 - **Player:** mostra a **resolução real** do vídeo (ex.: 1920×1080 · FHD).
 
+## Downloads para assistir offline (Android, celular)
+Em cada filme há o botão **Baixar**; em séries, um botão por episódio e **Baixar temporada**. O download usa o gerenciador do Android (segue com a tela apagada, mostra o progresso na notificação e retoma se a conexão cair) e, por padrão, **só no Wi-Fi**. Os arquivos ficam dentro do app (somem se o app for desinstalado). A tela **Downloads** (menu de três traços) mostra o andamento, o espaço livre e deixa assistir ou apagar; o que já foi baixado toca direto do celular e o ponto de *continuar assistindo* continua sendo salvo. **Sem internet** ao abrir, o app entra direto nos downloads. Limites: TV ao vivo e itens em .m3u8 não baixam, e cada download usa uma das conexões simultâneas do servidor IPTV.
+
 ## Sincronizar TV e celular
 Configurações → **Sincronização** mantém *continuar assistindo*, favoritos e histórico iguais nos aparelhos, usando um servidor gratuito no Cloudflare Workers (`worker/sync-worker.mjs`). Passo a passo em [docs/sincronizacao.md](docs/sincronizacao.md).
 
@@ -46,7 +49,7 @@ Com root + Homebrew Channel também dá para copiar o `.ipk` para a TV e instala
 ## Recompilar
 ```
 npm install
-node tests/test-core.js && node tests/test-sync.js && node tests/test-ui.js
+node tests/test-core.js && node tests/test-sync.js && node tests/test-dl.js && node tests/test-ui.js
 npx ares-package app services --no-minify -o dist
 ```
 

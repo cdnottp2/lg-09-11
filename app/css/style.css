@@ -610,3 +610,25 @@ body.portrait .dcast { margin-top: 18px; padding-bottom: 20px; }
 body.portrait .aphoto { width: 120px; height: 120px; border-radius: 50%; margin: 0 auto 10px; }
 body.compact .aphoto { width: 150px; height: 150px; border-radius: 50%; }
 .eplist:empty, .seasons:empty { display: none; }
+
+/* downloads (Android, celular) */
+.drawer .btn + .btn { margin-top: 14px; }
+.ep .edl { margin-left: 20px; color: #3ab4e0; font-size: 0.8em; flex: none; }
+.ep .epdl { flex: none; width: 44px; height: 44px; margin-left: 16px; border-radius: 50%; background: #1b2740; color: #e9eef7; display: flex; align-items: center; justify-content: center; line-height: 0; }
+.ep .epdl.f.focus { box-shadow: 0 0 0 3px #3ab4e0; }
+.dlfree { margin: 6px 0 10px; }
+.dlrow { margin-bottom: 14px; padding: 18px 22px; background: #121b2b; border-radius: 16px; }
+.dlrow .dlt { font-size: 26px; font-weight: 600; word-break: break-word; }
+.dlrow .dlst { margin-top: 4px; font-size: 21px; color: #8a97ad; }
+.dlrow .dlbar { height: 6px; margin-top: 10px; background: rgba(255,255,255,.14); border-radius: 3px; overflow: hidden; }
+.dlrow .dlbar .fill { height: 100%; width: 0; background: #3ab4e0; }
+.dlrow .dlbtns { margin-top: 12px; }
+.dlrow .dlbtns .btn { margin: 0 12px 0 0; }
+body.compact .dlrow { padding: 12px 14px; margin-bottom: 10px; }
+body.compact .dlrow .dlt { font-size: 20px; }
+body.compact .dlrow .dlst { font-size: 15px; }
+body.compact .ep .epdl { width: 34px; height: 34px; margin-left: 10px; }
+body.portrait .dlrow .dlt { font-size: 15px; }
+body.portrait .dlrow .dlst { font-size: 12px; }
+body.portrait .dlrow .dlbtns .btn { margin: 0 6px 6px 0; }
+body.portrait .ep .edl { font-size: 11px; margin-left: 8px; }
