@@ -1225,7 +1225,7 @@
       show(st.kind === 'bri' ? 'Brilho' : 'Volume', v, Math.round(v * 100) + '%');
     }, { passive: false });
     function end() {
-      if (st && st.kind === 'seek' && st.tgt !== st.t0) { Player.seekTo(st.tgt); learnSkip(); updateBar(st.tgt, Player.duration()); }
+      if (st && st.kind === 'seek' && st.tgt !== st.t0) { Player.seekTo(st.tgt); updateBar(st.tgt, Player.duration()); }
       if (st && st.kind) { hideSoon(); }
       st = null;
     }
@@ -1728,7 +1728,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.18.0']
+      ['Versão do app', '1.19.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -1755,7 +1755,6 @@
     page.appendChild(h('div', { cls: 'sgroup sub', text: 'Estilo da tela inicial (neste aparelho)' }));
     page.appendChild(homeStyleBlock());
     page.appendChild(switchRow('Reproduzir o último conteúdo ao abrir o app', 'Ao iniciar, retoma o último canal, filme ou episódio assistido.', 'autoplay'));
-    page.appendChild(switchRow('Pular introdução automaticamente', 'Em séries onde você já usou "Pular introdução", repete o salto no início de cada episódio.', 'autoIntro'));
     page.appendChild(switchRow('Ocultar canais SD', 'Esconde da lista os canais com "SD" no nome.', 'hideSD'));
     page.appendChild(switchRow('Ocultar canais HD', 'Esconde da lista os canais com "HD" no nome (FHD e 4K continuam).', 'hideHD'));
 
@@ -2072,45 +2071,6 @@
     try { if (window.NativeApp && window.NativeApp.setPlaying) { window.NativeApp.setPlaying(!!S.ctx && !Player.isPaused()); } } catch (e) {}
   }
 
-  /* ---------- pular introdução (série) ---------- */
-
-  var INTRO_MAX = 300, INTRO_DEFAULT = 85;
-  function introKey() { var c = S.ctx; return c && c.kind === 'ep' ? c.item.type + ':' + c.item.id : ''; }
-  function introDelta() { var v = store.get('intro', {})[introKey()]; return v > 0 ? v : INTRO_DEFAULT; }
-  function introLearned() { return store.get('intro', {})[introKey()] > 0; }
-
-  function skipIntro() {
-    var c = S.ctx;
-    if (!c || c.kind !== 'ep' || S.mini) { return; }
-    var d = introDelta();
-    S.skipLearn = { t0: Player.time(), at: Date.now(), key: introKey() };
-    Player.seekTo(Player.time() + d);
-    $('skip-intro').classList.add('hidden');
-    toast('Introdução pulada (+' + d + ' s)', 1800);
-  }
-
-  /* se você ajusta logo depois de pular (±10 s), o app aprende o salto certo desta série */
-  function learnSkip() {
-    var k = S.skipLearn;
-    if (!k || k.key !== introKey() || Date.now() - k.at > 12000) { return; }
-    var d = Math.round(Player.time() - k.t0);
-    if (d >= 15 && d <= 400) {
-      var m = store.get('intro', {}); m[k.key] = d; store.set('intro', m);
-      k.at = Date.now();
-    }
-  }
-
-  function updateSkipBtn(t) {
-    var c = S.ctx, b = $('skip-intro');
-    if (!b) { return; }
-    var on = !!c && c.kind === 'ep' && !S.mini && t >= 2 && t < INTRO_MAX;
-    b.classList.toggle('hidden', !on);
-    if (on && opt('autoIntro') && !c.autoDone && introLearned() && t < 25) {
-      c.autoDone = true;
-      skipIntro();
-    }
-  }
-
   function startPlay(ctx, fromStart) {
     setMini(false);
     S.ctx = ctx;
@@ -2166,7 +2126,6 @@
       if (!fromStart && r && r.t > 30 && r.t < r.d - 45) { o.startAt = r.t; }
     }
     c.autoDone = !!o.startAt;
-    $('skip-intro').classList.add('hidden');
     $('buffer').classList.remove('hidden');
     S.prefApplied = {};
     closeTracks();
@@ -2338,8 +2297,8 @@
         if (act === 'next') { zap(1); return; }
         if (act === 'prev') { zap(-1); return; }
         if (act === 'toggle') { Player.toggle(); }
-        if (act === 'rew') { Player.seek(-10); learnSkip(); }
-        if (act === 'ff') { Player.seek(10); learnSkip(); }
+        if (act === 'rew') { Player.seek(-10); }
+        if (act === 'ff') { Player.seek(10); }
         showOsd();
         updateBar(Player.time(), Player.duration());
         return;
@@ -2353,12 +2312,18 @@
     });
   }
 
-  function showOsd() {
+  function setOsdMenu(on) {
+    S.osdMenu = !!on;
+    $('osd-tracks').classList.toggle('focus', !!on);
+  }
+
+  function showOsd(menu) {
     if (S.mini) { return; }
+    setOsdMenu(menu === true);
     $('osd').classList.remove('hidden');
     $('osd-clock').textContent = hhmm(new Date());
     clearTimeout(S.osdTimer);
-    S.osdTimer = setTimeout(function () { $('osd').classList.add('hidden'); }, 4500);
+    S.osdTimer = setTimeout(function () { $('osd').classList.add('hidden'); setOsdMenu(false); }, 4500);
   }
 
   function updateBar(t, d) {
@@ -2486,7 +2451,6 @@
     S.seekAt = now;
     var steps = [10, 10, 20, 30, 60, 60, 120];
     Player.seek(dir * steps[Math.min(S.seekCount, steps.length - 1)]);
-    learnSkip();
     showOsd();
     updateBar(Player.time(), Player.duration());
   }
@@ -2499,21 +2463,22 @@
     if (live && k >= 96 && k <= 105) { digit(k - 96); return; }
     switch (k) {
       case KEY.GREEN: openTracks(); break;
-      case KEY.YELLOW: skipIntro(); break;
       case KEY.UP: case KEY.CHUP:
-        if (live) { zap(1); } else if (k === KEY.UP) { openTracks(); } else { showOsd(); }
+        if (live) { zap(1); } else { showOsd(true); }   // cima e baixo abrem o menu com "Áudio e legenda"
         break;
       case KEY.DOWN: case KEY.CHDN:
-        if (live) { zap(-1); } else { showOsd(); }
+        if (live) { zap(-1); } else { showOsd(true); }
         break;
       case KEY.LEFT: if (live) { showOsd(); } else { seek(-1); } break;
       case KEY.RIGHT: if (live) { showOsd(); } else { seek(1); } break;
-      case KEY.REW: if (!live) { Player.seek(-30); learnSkip(); showOsd(); } break;
-      case KEY.FF: if (!live) { Player.seek(30); learnSkip(); showOsd(); } break;
+      case KEY.REW: if (!live) { Player.seek(-30); showOsd(); } break;
+      case KEY.FF: if (!live) { Player.seek(30); showOsd(); } break;
       case KEY.PLAY: if (Player.isPaused()) { Player.toggle(); } showOsd(); break;
       case KEY.PAUSE: if (!Player.isPaused()) { Player.toggle(); } showOsd(); break;
       case KEY.ENTER:
-        if (live) { showOsd(); } else { Player.toggle(); showOsd(); clearTimeout(S.osdTimer); if (!Player.isPaused()) { showOsd(); } }
+        if (S.osdMenu && !$('osd').classList.contains('hidden')) { openTracks(); }   // menu aberto: OK abre áudio e legenda
+        else if (live) { showOsd(true); }
+        else { Player.toggle(); showOsd(); }
         break;
       case KEY.RED:
         if (live) { toggleFav(c.list[c.idx]); }
@@ -2609,7 +2574,6 @@
       },
       onTime: function (t, d) {
         if (!S.ctx || S.ctx.kind === 'live') { return; }
-        updateSkipBtn(t);
         if (!$('osd').classList.contains('hidden')) { updateBar(t, d); }
         var now = Date.now();
         if (now - S.lastSave > 10000) { S.lastSave = now; saveResume(); }
@@ -2658,10 +2622,6 @@
       if (el && sc && sc.contains(el)) { Nav.focus(el); }
     });
     document.addEventListener('click', function () { if (S.mode === 'player' && !S.tracksOpen) { showOsd(); } });
-    var skipB = h('button', { id: 'skip-intro', type: 'button', cls: 'hidden' }, [h('span', { text: 'Pular introdução' })]);
-    if (!document.body.classList.contains('touch')) { skipB.appendChild(h('small', { text: 'Amarelo' })); }
-    skipB.addEventListener('click', function (e) { e.stopPropagation(); skipIntro(); });
-    $('player').appendChild(skipB);
     window.__pip = function (on) { document.body.classList.toggle('pip', !!on); };
     var miniX = h('button', { id: 'mini-x', cls: 'f', type: 'button', title: 'Fechar', 'aria-label': 'Fechar' }, [icon('xmark', 22)]);
     var miniO = h('button', { id: 'mini-open', cls: 'f', type: 'button', title: 'Ampliar', 'aria-label': 'Ampliar' }, [icon('expand', 22), h('span', { text: 'Ampliar' })]);

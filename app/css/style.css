@@ -243,7 +243,7 @@ body.compact .seeall-n { font-size: 14px; }
 #osd-fill { height: 10px; width: 0; background: #3ab4e0; }
 #osd-hint { color: #8a97ad; font-size: 22px; margin-left: 40px; text-align: right; flex: none; max-width: 520px; }
 
-#osd-tracks { height: 58px; line-height: 58px; padding: 0 26px; border-radius: 29px; background: rgba(15,22,36,.82); font-size: 24px; font-weight: 600; color: #e9eef7; }
+#osd-tracks { margin-top: 14px; border: 0; height: 58px; line-height: 58px; padding: 0 26px; border-radius: 29px; background: rgba(15,22,36,.82); font-size: 24px; font-weight: 600; color: #e9eef7; }
 #osd-tracks .ico { margin-right: 10px; margin-top: -4px; color: #3ab4e0; }
 video::cue { background: rgba(0,0,0,.72); color: #fff; font-size: 42px; }
 
@@ -521,18 +521,10 @@ body.portrait .brand { white-space: nowrap; }
 body.portrait .acct .usub { display: none; }
 body.portrait .brand { font-size: 17px; letter-spacing: 1px; min-width: 0; overflow: hidden; }
 
-/* pular introdução */
-#skip-intro { position: absolute; right: 80px; bottom: 270px; z-index: 4; display: flex; align-items: center; height: 70px; padding: 0 34px; border-radius: 35px;
-  background: rgba(15,22,36,.92); box-shadow: 0 0 0 2px rgba(255,255,255,.35); font-size: 28px; font-weight: 700; color: #fff; }
-#skip-intro small { margin-left: 14px; padding: 3px 12px; border-radius: 8px; background: #ffc83d; color: #1a1400; font-size: 18px; font-weight: 800; }
-.touch #skip-intro { bottom: 160px; right: 30px; }
-body.compact #skip-intro { height: 52px; font-size: 20px; padding: 0 24px; border-radius: 26px; bottom: 150px; right: 30px; }
-body.portrait #skip-intro { height: 38px; font-size: 14px; padding: 0 16px; border-radius: 19px; bottom: 90px; right: 14px; }
-#player.mini #skip-intro { display: none !important; }
 
 /* janela flutuante do sistema (PiP): só o vídeo */
 body.pip #player, body.pip #player.mini { left: 0 !important; top: 0 !important; right: 0 !important; bottom: 0 !important; width: 100% !important; height: 100% !important; border-radius: 0; box-shadow: none; z-index: 200; }
-body.pip #osd, body.pip #tracks, body.pip #chnum, body.pip #mini-x, body.pip #mini-title, body.pip #skip-intro, body.pip #toast { display: none !important; }
+body.pip #osd, body.pip #tracks, body.pip #chnum, body.pip #mini-x, body.pip #mini-title, body.pip #toast { display: none !important; }
 
 /* perfis */
 #profiles { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 40; background: #0b101a; text-align: center; padding-top: 120px; }
@@ -663,3 +655,9 @@ body.portrait .picons { max-width: 100%; }
 #player.mini .f.focus { box-shadow: 0 0 0 3px #fff, 0 0 18px rgba(255,255,255,.5); background: #3ab4e0; color: #04202c; }
 body.portrait #player.mini #mini-open { height: 30px; padding: 0 10px 0 8px; font-size: 12px; left: 6px; top: 6px; border-radius: 15px; }
 body.portrait #player.mini #mini-open .ico svg { width: 14px; height: 14px; }
+
+/* "Áudio e legenda" no menu inferior do player (cima/baixo abrem; OK abre o painel) */
+#osd-tracks.focus { background: #fff; color: #0b101a; box-shadow: 0 0 0 3px #fff, 0 0 24px rgba(255,255,255,.35); }
+#osd-tracks.focus .ico { color: #0b101a; }
+body.compact #osd-tracks { height: 42px; line-height: 42px; font-size: 18px; padding: 0 18px; margin-top: 8px; }
+body.portrait #osd-tracks { height: 32px; line-height: 32px; font-size: 13px; padding: 0 12px; margin-top: 6px; }

@@ -252,16 +252,23 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       step('séries -> temporadas -> episódio');
       vd = 2700; vt = 10;
       $('#video').dispatchEvent(new w.Event('timeupdate'));
-      assert.ok(!$('#skip-intro').classList.contains('hidden'), 'botão Pular introdução aparece no começo do episódio');
-      $('#skip-intro').click();
-      assert.strictEqual(vt, 95, 'pula 85 s por padrão');
-      assert.ok($('#skip-intro').classList.contains('hidden'), 'botão some depois de pular');
-      vt += 10; key(39); // ajuste logo depois de pular: o app aprende o salto desta série
-      var learned = JSON.parse(w.localStorage.getItem('iptv.intro') || '{}');
-      assert.ok(Object.keys(learned).length === 1 && Object.keys(learned).map(function (k) { return learned[k]; })[0] > 85, 'aprendeu o salto: ' + JSON.stringify(learned));
-      vt = 600; $('#video').dispatchEvent(new w.Event('timeupdate'));
-      assert.ok($('#skip-intro').classList.contains('hidden'), 'botão só aparece nos primeiros minutos');
-      step('pular introdução: botão, salto e aprendizado');
+      assert.ok(!$('#skip-intro') && !$('#osd-top #osd-tracks') && !$('.osd-top #osd-tracks'), 'sem "Pular introdução" e sem o botão de áudio no topo');
+      assert.ok($('.osd-info #osd-tracks'), '"Áudio e legenda" fica no menu de baixo');
+      // cima e baixo abrem o menu inferior com "Áudio e legenda" destacado; OK abre o painel
+      $('#osd').classList.add('hidden');
+      key(40);
+      assert.ok(!$('#osd').classList.contains('hidden') && $('#osd-tracks').classList.contains('focus'), 'baixo abre o menu com Áudio e legenda');
+      $('#osd').classList.add('hidden');
+      key(38);
+      assert.ok(!$('#osd').classList.contains('hidden') && $('#osd-tracks').classList.contains('focus') && $('#tracks').classList.contains('hidden'), 'cima também abre o menu (sem abrir o painel direto)');
+      key(13);
+      assert.ok(!$('#tracks').classList.contains('hidden'), 'OK no menu abre áudio e legenda');
+      key(27);
+      key(39);
+      assert.ok(!$('#osd-tracks').classList.contains('focus'), 'outra tecla tira o destaque do menu');
+      var was = vt; key(13);
+      assert.ok($('#tracks').classList.contains('hidden'), 'OK sem o menu aberto só pausa/continua');
+      step('menu inferior: cima/baixo -> Áudio e legenda; sem Pular introdução');
       vt = 0; vd = NaN;
       key(27); key(27);
       go('home');
@@ -328,12 +335,12 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       assert.ok(/127\.0\.0\.1/.test(txt) && /joao/.test(txt));
       var ver = require('../app/appinfo.json').version;
       assert.ok(txt.indexOf('Versão do app') >= 0 && txt.indexOf(ver) >= 0, 'versão do app em Configurações deve ser a do appinfo.json (' + ver + ')');
-      assert.strictEqual($$('.swrow').length, 4, 'quatro chaves');
+      assert.strictEqual($$('.swrow').length, 3, 'três chaves');
       step('configurações');
       // ocultar SD / HD: a categoria "Filmes e séries 24h" tem Cine HD, Cine SD e Cine FHD
-      $$('.swrow')[2].click(); // SD
-      assert.ok($$('.sw')[2].classList.contains('on'));
-      $$('.swrow')[3].click(); // HD
+      $$('.swrow')[1].click(); // SD
+      assert.ok($$('.sw')[1].classList.contains('on'));
+      $$('.swrow')[2].click(); // HD
       $('.backbtn').click();
       go('live');
       return waitFor(function () { return $$('.cat').length === 4; }, 'ao vivo de novo');
@@ -347,7 +354,7 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       go('settings');
       return waitFor(function () { return $('.settings .sgroup'); }, 'config 2');
     }).then(function () {
-      $$('.swrow')[2].click(); $$('.swrow')[3].click(); // desliga os dois
+      $$('.swrow')[1].click(); $$('.swrow')[2].click(); // desliga os dois
       // cidade do clima
       $('#city').value = 'Campinas';
       $('#city').focus();

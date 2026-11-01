@@ -26,7 +26,7 @@ Configurações → **Sincronização** mantém *continuar assistindo*, favorito
 ## Controles
 | Tecla | Ao vivo | Filmes/séries |
 |---|---|---|
-| ▲ ▼ / CH+ CH- | trocar canal | ▲ abre áudio e legenda |
+| ▲ ▼ / CH+ CH- | trocar canal | ▲ ou ▼ abre o menu de baixo (com *Áudio e legenda*) |
 | 0–9 | ir ao canal pelo número | – |
 | ◀ ▶ | mostra barra | ±10 s (acelera segurando) |
 | OK | mostra barra | pausar/continuar |
@@ -38,7 +38,7 @@ Configurações → **Sincronização** mantém *continuar assistindo*, favorito
 Filmes e episódios retomam de onde parou; ao terminar um episódio, o próximo toca sozinho.
 
 ## Áudio e legenda
-No player, tecla **Verde** (ou ▲ em filme/série, ou o botão "Áudio e legenda" no canto superior com o Magic Remote) abre o painel com as faixas de áudio e as legendas embutidas. O idioma escolhido fica salvo e é aplicado nos próximos conteúdos que tiverem a mesma faixa. A lista vem do que o player da TV (ou o hls.js) expõe; se o conteúdo só tem uma faixa, o painel avisa. O rodapé do painel mostra o motor em uso e quantas faixas foram encontradas, útil para diagnóstico.
+No player, em filme/série aperte ▲ ou ▼ para abrir o menu de baixo (título e barra de progresso): a opção **Áudio e legenda** aparece destacada, e **OK** abre o painel (na TV ao vivo, **OK** mostra o menu e **OK** de novo abre o painel; ▲ ▼ trocam de canal). Também vale a tecla **Verde** ou clicar no botão com o Magic Remote abre o painel com as faixas de áudio e as legendas embutidas. O idioma escolhido fica salvo e é aplicado nos próximos conteúdos que tiverem a mesma faixa. A lista vem do que o player da TV (ou o hls.js) expõe; se o conteúdo só tem uma faixa, o painel avisa. O rodapé do painel mostra o motor em uso e quantas faixas foram encontradas, útil para diagnóstico.
 
 ## Instalar (TV com root / modo desenvolvedor)
 ```
