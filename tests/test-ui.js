@@ -178,6 +178,25 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       key(27);
       assert.ok(!$('#player').classList.contains('hidden') && $('#player').classList.contains('mini'), 'Voltar minimiza o player');
       assert.ok(d.body.classList.contains('mini-on') && !$('#app').classList.contains('hidden'), 'lista visível com o mini player');
+      // controle sem botões coloridos (Android TV): os botões do mini player entram na navegação do direcional
+      assert.ok(w.Nav.all().indexOf($('#mini-open')) >= 0 && w.Nav.all().indexOf($('#mini-x')) >= 0, 'botões do mini player são navegáveis');
+      w.Nav.focus($('#mini-open'));
+      assert.strictEqual(w.Nav.current(), $('#mini-open'), 'foco no botão Ampliar');
+      key(13);
+      assert.ok(!$('#player').classList.contains('mini'), 'OK em "Ampliar" volta ao player em tela cheia');
+      key(27);
+      w.Nav.focus($('#mini-x'));
+      key(13);
+      assert.ok($('#player').classList.contains('hidden'), 'OK no X fecha o mini player');
+      assert.ok(w.Nav.current(), 'o foco volta para a lista');
+      step('mini player alcançável só com o direcional (Ampliar e Fechar)');
+      go('live');
+      return waitFor(function () { return $$('.row').length > 0; }, 'canais de novo').then(function () {
+        $$('.row')[0].click();
+        return waitFor(function () { return !$('#player').classList.contains('hidden'); }, 'player de novo');
+      });
+    }).then(function () {
+      key(27);
       key(405);
       assert.ok(!$('#player').classList.contains('mini'), 'Amarelo amplia');
       key(27); key(406);
@@ -407,13 +426,19 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       assert.ok(!$('#profiles').classList.contains('hidden'), 'seletor de perfis abre');
       $('#profiles .padd').click();
       $('#profiles input').value = 'Ana';
+      assert.ok($$('#profiles .aicon').length >= 12, 'editor oferece ícones de avatar');
+      w.Nav.focus($$('#profiles .aicon')[2]);
+      $$('#profiles .aicon')[2].click();
+      assert.ok($$('#profiles .aicon')[2].classList.contains('on') && $('#profiles .pav svg'), 'ícone escolhido aparece no avatar');
+      assert.strictEqual(w.Nav.current(), $$('#profiles .aicon')[2], 'o foco continua no ícone escolhido');
       $$('#profiles .btn').filter(function (b) { return b.textContent === 'Salvar'; })[0].click();
       assert.strictEqual($$('#profiles .pcard').length, 3, 'dois perfis + adicionar');
+      assert.ok($$('#profiles .pcard')[1].querySelector('svg'), 'o perfil salvo mostra o ícone em vez da inicial');
       $$('#profiles .btn').filter(function (b) { return b.textContent === 'Concluído'; })[0].click();
       $$('#profiles .pcard')[1].click(); // entra no perfil Ana
       assert.ok($('#profiles').classList.contains('hidden') && $('.hubtab'), 'entrou no menu do novo perfil');
       assert.strictEqual(Object.keys(w.JSON.parse(w.localStorage.getItem('iptv.' + w.JSON.parse(w.localStorage.getItem('iptv.curprof')) + '.fav') || '{}')).length, 0, 'favoritos separados');
-      assert.ok(/^A$/.test($('.avatar').textContent), 'avatar com a inicial do perfil');
+      assert.ok($('.avatar svg') && $('.avatar').textContent === '', 'avatar mostra o ícone escolhido no perfil');
       $('.avatar').click();
       $$('#profiles .pcard')[0].click(); // volta ao perfil 1
       assert.strictEqual(w.JSON.parse(w.localStorage.getItem('iptv.curprof')), 'p1');

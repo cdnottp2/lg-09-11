@@ -67,7 +67,19 @@
     storm: '<path d="M7 14.5a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 7 3.8 3.8 0 0 1 17.5 14.5z"/><path d="M12.5 14l-2.5 4h3.5l-2 4"/>',
     fog: '<path d="M4 8h16M3 12h18M5 16h14M8 20h8"/>',
     check: '<path d="M5 12.5l5 5 9-10.5"/>',
-    cc: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10.5 10.3a2.4 2.4 0 1 0 0 3.4M17 10.3a2.4 2.4 0 1 0 0 3.4"/>'
+    cc: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10.5 10.3a2.4 2.4 0 1 0 0 3.4M17 10.3a2.4 2.4 0 1 0 0 3.4"/>',
+    av_smile: '<circle cx="12" cy="12" r="9"/><path d="M8.3 14.3a4.6 4.6 0 0 0 7.4 0M9 9.6v.01M15 9.6v.01"/>',
+    av_bolt: '<path d="M13 3L5.5 13.5H11L10 21l8.5-11H13z"/>',
+    av_heart: '<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.2 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>',
+    av_rocket: '<path d="M12 3c3 2 4.5 5.5 4.5 9l-2 3h-5l-2-3c0-3.5 1.5-7 4.5-9z"/><path d="M9.5 15L7 19.5M14.5 15l2.5 4.5"/><circle cx="12" cy="10" r="1.6"/>',
+    av_ghost: '<path d="M5 20V11a7 7 0 0 1 14 0v9l-2.3-2-2.4 2-2.3-2-2.3 2-2.4-2z"/><path d="M9.5 11v.01M14.5 11v.01"/>',
+    av_paw: '<circle cx="6.8" cy="11" r="1.8"/><circle cx="10.8" cy="6.8" r="1.8"/><circle cx="16" cy="6.8" r="1.8"/><circle cx="19.6" cy="11" r="1.8"/><path d="M8.6 18c0-3 2-5 4-5s4 2 4 5c0 2-2 2.4-4 1.4-2 1-4 .6-4-1.4z"/>',
+    av_crown: '<path d="M4 18L3 8l5 4 4-7 4 7 5-4-1 10z"/>',
+    av_game: '<rect x="2.5" y="7" width="19" height="11" rx="5"/><path d="M8 10.5v4M6 12.5h4M15.5 11.5v.01M18 13.5v.01"/>',
+    av_music: '<path d="M9 18V6l10-2v12"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="16" r="2"/>',
+    av_ball: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18M5.6 5.6c3 3 3 9.8 0 12.8M18.4 5.6c-3 3-3 9.8 0 12.8"/>',
+    av_moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+    av_cat: '<path d="M4 5l4 3.5h8L20 5v9a8 8 0 0 1-16 0z"/><path d="M9 13v.01M15 13v.01M11 16.5h2"/>'
   };
 
   function icon(name, size) {
@@ -533,6 +545,15 @@
   function profiles() { var l = store.get('profiles', null); return l && l.length ? l : [{ id: 'p1', name: 'Perfil 1', color: 0 }]; }
   function curProfile() { var l = profiles(), i; for (i = 0; i < l.length; i++) { if (l[i].id === curProf) { return l[i]; } } return l[0]; }
   function profInitial(p) { return (p.name || '?').charAt(0).toUpperCase(); }
+  /* avatar: a inicial do nome ou um dos ícones (campo "icon" do perfil) */
+  var AVICONS = ['av_smile', 'av_cat', 'av_paw', 'av_ghost', 'av_rocket', 'av_bolt', 'av_heart', 'av_crown', 'av_game', 'av_music', 'av_ball', 'av_moon'];
+  function avSet(el, p) {
+    var ic = p.icon && ICONS[p.icon] ? p.icon : '';
+    while (el.firstChild && !(el.firstChild.className === 'pedit')) { el.removeChild(el.firstChild); }
+    var node = ic ? icon(ic, 60) : h('span', { text: profInitial(p) });
+    el.insertBefore(node, el.firstChild);
+    return el;
+  }
 
   function reloadProfileData() {
     S.favs = store.get('fav', {}); S.resume = store.get('resume', {}); S.last = store.get('last', {});
@@ -578,8 +599,9 @@
   }
 
   function profAvatar(p, big, manage) {
-    return h('div', { cls: 'pav' + (big ? ' big' : ''), style: 'background:' + PCOLORS[p.color % PCOLORS.length] },
-      [h('span', { text: profInitial(p) })].concat(manage ? [h('div', { cls: 'pedit' }, [icon('pencil', 34)])] : []));
+    var el = h('div', { cls: 'pav' + (big ? ' big' : ''), style: 'background:' + PCOLORS[p.color % PCOLORS.length] },
+      manage ? [h('div', { cls: 'pedit' }, [icon('pencil', 34)])] : []);
+    return avSet(el, p);
   }
 
   function renderProfiles() {
@@ -610,19 +632,31 @@
   }
 
   function renderProfileEdit(box, list) {
-    var e = S.profEdit, p = { id: e.p.id, name: e.p.name, color: e.p.color }, input = h('input', { cls: 'f input', type: 'text', placeholder: 'Nome do perfil' });
+    var e = S.profEdit, p = { id: e.p.id, name: e.p.name, color: e.p.color, icon: e.p.icon || '' }, input = h('input', { cls: 'f input', type: 'text', placeholder: 'Nome do perfil' });
     input.value = p.name;
     input.maxLength = 16;
-    var sw = h('div', { cls: 'pswatches' }), preview = profAvatar(p, true, false);
+    var sw = h('div', { cls: 'pswatches' }), preview = profAvatar(p, true, false), ics = h('div', { cls: 'picons' });
+    var swBtns = [], icBtns = [];
+    // os botões são criados uma vez; escolher só troca a marca (o foco do controle não se perde)
+    PCOLORS.forEach(function (c, i) {
+      var b = h('button', { cls: 'f swatch', type: 'button', style: 'background:' + c, on: { click: function () { p.color = i; paint(); } } });
+      swBtns.push(b); sw.appendChild(b);
+    });
+    [''].concat(AVICONS).forEach(function (k) {
+      var b = avSet(h('button', { cls: 'f aicon', type: 'button', title: k ? 'Ícone' : 'Inicial do nome', on: { click: function () { p.icon = k; paint(); } } }), { name: p.name, icon: k });
+      b._k = k; icBtns.push(b); ics.appendChild(b);
+    });
     function paint() {
-      sw.innerHTML = '';
-      PCOLORS.forEach(function (c, i) {
-        sw.appendChild(h('button', { cls: 'f swatch' + (i === p.color ? ' on' : ''), type: 'button', style: 'background:' + c, on: { click: function () { p.color = i; paint(); } } }));
+      swBtns.forEach(function (b, i) { b.classList.toggle('on', i === p.color); });
+      icBtns.forEach(function (b) {
+        b.classList.toggle('on', b._k === (p.icon || ''));
+        if (!b._k) { avSet(b, { name: p.name, icon: '' }); }
       });
+      avSet(preview, p);
       preview.style.background = PCOLORS[p.color];
     }
     paint();
-    input.addEventListener('input', function () { preview.firstChild.textContent = (input.value || '?').charAt(0).toUpperCase(); });
+    input.addEventListener('input', function () { p.name = input.value || '?'; paint(); });
     var del = null;
     if (!e.isNew && list.length > 1) {
       del = h('button', { cls: 'f btn', text: 'Excluir perfil', on: { click: function () {
@@ -636,7 +670,7 @@
       } } });
     }
     box.appendChild(h('div', { cls: 'ptitle', text: e.isNew ? 'Novo perfil' : 'Editar perfil' }));
-    box.appendChild(h('div', { cls: 'pform' }, [preview, input, sw]));
+    box.appendChild(h('div', { cls: 'pform' }, [preview, input, sw, ics]));
     box.appendChild(h('div', { cls: 'pbtns' }, [
       h('button', { cls: 'f btn primary', text: 'Salvar', on: { click: function () {
         p.name = (input.value || '').replace(/^\s+|\s+$/g, '') || p.name;
@@ -813,8 +847,8 @@
       hd.appendChild(h('button', { cls: 'f iconbtn menubtn', type: 'button', title: 'Menu', 'aria-label': 'Menu',
         on: { click: openDrawer } }, [icon('menu', 28)]));
       hd.appendChild(h('div', { cls: 'brand', text: 'MASTER IPTV' }));
-      hd.appendChild(h('button', { cls: 'f avatar', type: 'button', style: 'background:' + PCOLORS[prof.color % PCOLORS.length], text: profInitial(prof),
-        on: { click: function () { showProfiles(true); } } }));
+      hd.appendChild(avSet(h('button', { cls: 'f avatar', type: 'button', style: 'background:' + PCOLORS[prof.color % PCOLORS.length],
+        on: { click: function () { showProfiles(true); } } }), prof));
       loadWeather();
       updateDrawerInfo();
       return;
@@ -1694,7 +1728,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.17.0']
+      ['Versão do app', '1.18.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -2383,8 +2417,10 @@
 
   function expandPlayer() {
     if (!S.mini || !S.ctx) { return; }
+    var cur = Nav.current();
     setMini(false);
-    S.resumeFocus = Nav.current();
+    // se o foco estava num botão do próprio mini player, mantém o ponto anterior para devolver o foco ao minimizar
+    if (!cur || !$('player').contains(cur)) { S.resumeFocus = cur; }
     S.resumeScope = Nav.getScope();
     S.mode = 'player';
     nativeFull(true);
@@ -2416,7 +2452,8 @@
     if (S.detail && S.detail.item && S.detail.item.type === 'series') { renderEps(); buildSeriesButtons(); }
     else if (S.detail && S.detail.item && S.detail.item.type === 'movie') { buildMovieButtons(); }
     if (!S.detail && S.section === 'home') { refreshHome(); return; }
-    if (S.resumeFocus && document.body.contains(S.resumeFocus)) { Nav.focus(S.resumeFocus); }
+    if (S.resumeFocus && document.body.contains(S.resumeFocus) && !$('player').contains(S.resumeFocus)) { Nav.focus(S.resumeFocus); }
+    else if (!Nav.current()) { Nav.focusFirst(); }
   }
 
   function zap(delta) {
@@ -2626,11 +2663,14 @@
     skipB.addEventListener('click', function (e) { e.stopPropagation(); skipIntro(); });
     $('player').appendChild(skipB);
     window.__pip = function (on) { document.body.classList.toggle('pip', !!on); };
-    var miniX = h('button', { id: 'mini-x', type: 'button' }, [icon('xmark', 22)]);
+    var miniX = h('button', { id: 'mini-x', cls: 'f', type: 'button', title: 'Fechar', 'aria-label': 'Fechar' }, [icon('xmark', 22)]);
+    var miniO = h('button', { id: 'mini-open', cls: 'f', type: 'button', title: 'Ampliar', 'aria-label': 'Ampliar' }, [icon('expand', 22), h('span', { text: 'Ampliar' })]);
     var miniT = h('div', { id: 'mini-title' });
     $('player').appendChild(miniT);
+    $('player').appendChild(miniO);
     $('player').appendChild(miniX);
     miniX.addEventListener('click', function (e) { e.stopPropagation(); closePlayer(); });
+    miniO.addEventListener('click', function (e) { e.stopPropagation(); expandPlayer(); });
     $('player').addEventListener('click', function () { if (S.mini) { expandPlayer(); } });
     $('osd-tracks').addEventListener('click', function (e) { e.stopPropagation(); openTracks(); });
     $('osd-tracks').insertBefore(icon('cc', 30), $('osd-tracks').firstChild);

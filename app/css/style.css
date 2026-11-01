@@ -488,7 +488,7 @@ body.portrait video::cue { font-size: 22px; }
 body.portrait .cat .ct { -webkit-line-clamp: 3; }
 
 /* mini player */
-#mini-x, #mini-title { display: none; }
+#mini-x, #mini-title, #mini-open { display: none; }
 #player.mini { left: auto; top: auto; right: 28px; bottom: auto; width: 480px; height: 270px; border-radius: 18px; overflow: hidden;
   box-shadow: 0 10px 40px rgba(0,0,0,.7), 0 0 0 2px rgba(58,180,224,.55); z-index: 30; cursor: pointer; }
 body.mini-on #player.mini { top: 124px; }
@@ -640,3 +640,26 @@ body.phone #player:not(.mini) { touch-action: none; }
 #gest .gest-bar { height: 6px; margin-top: 10px; border-radius: 3px; background: rgba(255,255,255,.25); overflow: hidden; }
 #gest #gest-f { height: 100%; background: #fff; }
 #gest.nobar .gest-bar { display: none; }
+
+/* avatar com ícone */
+.pav .ico, .avatar .ico { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+.pav .ico svg { width: 56%; height: 56%; }
+.avatar .ico svg { width: 62%; height: 62%; }
+.picons { display: flex; flex-wrap: wrap; justify-content: center; margin: 14px auto 6px; max-width: 700px; }
+.aicon { display: flex; align-items: center; justify-content: center; width: 72px; height: 72px; margin: 6px; border-radius: 18px; background: #172238; color: #e8edf5; font-size: 30px; font-weight: 800; }
+.aicon .ico { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+.aicon .ico svg { width: 58%; height: 58%; }
+.aicon.on { box-shadow: 0 0 0 4px #0b101a, 0 0 0 7px #fff; }
+.aicon.f.focus { box-shadow: 0 0 0 3px #3ab4e0, 0 0 22px rgba(58,180,224,.45); }
+.aicon.on.f.focus { box-shadow: 0 0 0 4px #0b101a, 0 0 0 7px #3ab4e0; }
+body.compact .aicon { width: 52px; height: 52px; margin: 4px; border-radius: 14px; font-size: 22px; }
+body.compact .picons { max-width: 560px; }
+body.portrait .aicon { width: 40px; height: 40px; margin: 3px; border-radius: 10px; font-size: 18px; }
+body.portrait .picons { max-width: 100%; }
+
+/* mini player: botões alcançáveis pelo direcional (Ampliar à esquerda, fechar à direita) */
+#player.mini #mini-open { display: flex; align-items: center; position: absolute; left: 10px; top: 10px; height: 48px; padding: 0 16px 0 12px; border-radius: 24px; background: rgba(15,22,36,.85); color: #fff; font-size: 20px; font-weight: 600; }
+#player.mini #mini-open .ico { margin-right: 8px; display: flex; }
+#player.mini .f.focus { box-shadow: 0 0 0 3px #fff, 0 0 18px rgba(255,255,255,.5); background: #3ab4e0; color: #04202c; }
+body.portrait #player.mini #mini-open { height: 30px; padding: 0 10px 0 8px; font-size: 12px; left: 6px; top: 6px; border-radius: 15px; }
+body.portrait #player.mini #mini-open .ico svg { width: 14px; height: 14px; }

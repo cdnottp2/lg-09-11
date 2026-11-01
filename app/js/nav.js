@@ -18,14 +18,22 @@ var Nav = (function () {
     return true;
   }
 
+  // o mini player fica fora da tela atual: seus botões entram na navegação para dar para chegar neles só com o direcional
+  function extras() {
+    var m = document.querySelector('#player.mini'), r = root();
+    if (!m || m.contains(r) || r.contains(m) || (r.id === 'profiles')) { return []; }
+    return m.querySelectorAll('.f');
+  }
+
   function all() {
-    var out = [], list = root().querySelectorAll('.f'), i;
+    var out = [], list = [].slice.call(root().querySelectorAll('.f')).concat([].slice.call(extras())), i;
     for (i = 0; i < list.length; i++) { if (visible(list[i])) { out.push(list[i]); } }
     return out;
   }
 
   function current() {
-    var c = root().querySelector('.f.focus');
+    var c = root().querySelector('.f.focus'), x;
+    if (!c) { x = extras(); c = x.length ? document.querySelector('#player.mini .f.focus') : null; }
     return c && visible(c) ? c : null;
   }
 

@@ -12,6 +12,8 @@ Servidor, usuário e senha (Xtream Codes). Se algo der errado, os campos continu
 - **Cada seção mostra só o seu conteúdo**, com categorias na coluna da esquerda e um botão **Buscar** que pesquisa só dentro dela. **Voltar** sobe um nível (lista → categorias → menu); o botão **Menu** do topo volta direto.
 - **TV ao vivo:** lista em duas colunas, com o **programa atual** (horário de início e fim), a barra de progresso e o **próximo programa** em cada canal; canais sem guia mostram "Sem programação". Os nomes das categorias aparecem sem o prefixo repetido (ex.: "Canais | Esportes" vira "Esportes").
 - **Configurações** (pelo menu lateral): dados da conta, **editar servidor**, chaves para **reproduzir o último conteúdo ao abrir o app**, **ocultar canais SD** e **ocultar canais HD** (FHD e 4K continuam), e a **cidade do clima** (busca pelo nome).
+- **Perfis:** além da cor, cada perfil pode ter um **ícone** de avatar (carinha, gato, patinha, foguete, coroa, joystick…) ou a inicial do nome. Pelo menu de perfil (avatar no canto) → *Gerenciar perfis* → editar.
+- **Mini player:** com o controle remoto só de setas (Android TV, sem botões coloridos), navegue para a direita até o mini player: **Ampliar** (à esquerda) e **Fechar** (à direita), e aperte OK. Nos controles com Amarelo/Azul, esses botões continuam valendo.
 - **Player:** mostra a **resolução real** do vídeo (ex.: 1920×1080 · FHD).
 - **Gestos no player (app Android, celular):** arraste o dedo para cima/baixo na **metade esquerda** para mudar o **brilho** e na **direita** para mudar o **volume**; em filmes e episódios, arraste **para os lados** para avançar ou voltar (a tela mostra quanto). O brilho volta ao normal ao sair do player.
 
