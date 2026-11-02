@@ -148,13 +148,12 @@
     return Promise.resolve(http(url)).then(function (t) { return typeof t === 'string' ? JSON.parse(t) : t; });
   }
 
-  /* o: { leagues: [ids], from: Date, to: Date }. Uma consulta por liga; a que falhar não derruba as outras.
-     Resolve { games: [...ordenados por horário], failed: [ids] } */
-  Sp.fetch = function (http, o) {
-    var ids = o.leagues || Sp.LEAGUES.map(function (l) { return l.id; }), failed = [];
-    var range = ymd(o.from) + '-' + ymd(o.to);
+  /* Jogos de UM dia (a fonte não aceita intervalo de datas). date: Date; leagues: ids (padrão: todas).
+     Uma consulta por liga; a que falhar não derruba as outras. Resolve { games: [...ordenados por horário], failed: [ids] } */
+  Sp.fetchDay = function (http, date, leagues) {
+    var ids = leagues || Sp.LEAGUES.map(function (l) { return l.id; }), failed = [];
     return Promise.all(ids.map(function (id) {
-      return getJson(http, Sp.BASE + '/' + id + '/scoreboard?limit=200&dates=' + range).then(function (d) {
+      return getJson(http, Sp.BASE + '/' + id + '/scoreboard?limit=200&dates=' + ymd(date)).then(function (d) {
         var out = [];
         ((d && d.events) || []).forEach(function (ev) { var g = Sp.parseEvent(ev, id); if (g) { out.push(g); } });
         return out;

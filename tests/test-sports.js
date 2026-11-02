@@ -57,8 +57,8 @@ function fakeHttp(url) {
   if (/bra\.1/.test(url)) { return Promise.resolve(JSON.stringify({ events: [ev('2026-09-20T19:00Z', 'pre', t('1', 'A', 'A'), t('2', 'B', 'B'), '0', '0')] })); }
   return Promise.resolve('{"events":[]}');
 }
-Sports.fetch(fakeHttp, { from: new Date(2026, 8, 19), to: new Date(2026, 8, 26) }).then(function (r) {
+Sports.fetchDay(fakeHttp, new Date(2026, 8, 19)).then(function (r) {
   ok(r.games.length === 1 && r.failed.length === 1 && r.failed[0] === 'uefa.champions', 'falha isolada por liga');
-  ok(calls.length === Sports.LEAGUES.length && /dates=20260919-20260926/.test(calls[0]), 'uma consulta por liga, com o intervalo de datas');
+  ok(calls.length === Sports.LEAGUES.length && calls.every(function (u) { return /dates=20260919(&|$)/.test(u); }), 'uma consulta por liga, com um único dia (sem intervalo)');
   console.log('todos os testes passaram (' + n + ')');
 }).catch(function (e) { console.error('  FAIL ' + (e && e.stack || e)); process.exit(1); });

@@ -438,7 +438,7 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       assert.ok(/Brasileirão/.test(txt), 'agrupa por liga');
       return waitFor(function () { return /Canal Esporte 2/.test($('.spcard.live').textContent); }, 'canal do jogo na programação');
     }).then(function () {
-      assert.ok($('.spwarn') && /Nations League/.test($('.spwarn').textContent), 'avisa a liga que não carregou');
+      assert.ok(!$('.spwarn'), 'uma liga fora do ar não polui a tela');
       $('.spcard.live').click();
       assert.ok(/Raphael Veiga/.test($('.sports').textContent) && /Posse de bola/.test($('.sports').textContent) && /55%/.test($('.sports').textContent), 'gols e estatísticas');
       var pl = $$('.spplay')[0];

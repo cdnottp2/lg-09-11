@@ -62,6 +62,8 @@ function create() {
         if (extra) { o.competitions[0].details = extra; }
         return o;
       }
+      // a fonte real só aceita UM dia por consulta (intervalo dá erro): o teste guarda essa regra
+      if (!/^\d{8}$/.test(String(q.dates || ''))) { res.writeHead(400); return res.end('dates invalido'); }
       if (lg === 'uefa.nations') { res.writeHead(500); return res.end('erro'); }
       var events = [];
       if (lg === 'bra.1') {

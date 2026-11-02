@@ -707,21 +707,46 @@
   function spGame(g) { return g.league + ':' + g.id; }
   var spEpg = {};
 
-  function spLoad(force) {
-    var sp = S.sp, token = S.loadToken;
-    if (sp.loading) { return; }
-    if (!force && sp.at && Date.now() - sp.at < 45000) { spScan(false); return; }
-    sp.loading = true;
-    Sports.fetch(http, { from: spDay(-1), to: spDay(6) }).then(function (r) {
-      sp.loading = false;
-      sp.tried = true;
-      sp.failed = r.failed;
-      if (r.failed.length < Sports.LEAGUES.length) { sp.games = r.games; sp.at = Date.now(); sp.ok = true; if (sp.game) { sp.game = spFresh(sp.game); } }
-      else if (!sp.games.length) { sp.ok = false; }
-      if (token !== S.loadToken || S.section !== 'sports') { return; }
-      paintSports();
-      spScan(false);
+  /* a fonte só entrega um dia por consulta: guarda cada dia (hoje renova rápido, os outros devagar) e junta tudo */
+  function spNeeded() {
+    var sp = S.sp, out = [0], i;
+    if (sp.tab === 'teams') { for (i = 1; i <= 5; i++) { out.push(i); } }
+    else if (sp.day !== 0) { out.push(sp.day); }
+    return out;
+  }
+
+  function spMerge() {
+    var sp = S.sp, seen = {}, out = [], keys = Object.keys(sp.days).sort(function (a, b) { return sp.days[b].at - sp.days[a].at; });
+    keys.forEach(function (k) {
+      sp.days[k].games.forEach(function (g) { if (!seen[spGame(g)]) { seen[spGame(g)] = 1; out.push(g); } });
     });
+    out.sort(function (a, b) { return a.start - b.start; });
+    sp.games = out;
+    if (sp.game) { sp.game = spFresh(sp.game); }
+  }
+
+  function spEnsure(offs, force) {
+    var sp = S.sp, token = S.loadToken, now = Date.now(), chain = Promise.resolve(), any = false;
+    offs.forEach(function (o) {
+      var k = Sports.ymd(spDay(o)), c = sp.days[k], ttl = o === 0 ? 40000 : 600000;
+      if (sp.pend[k] || (c && !(force && o === 0) && now - c.at < ttl)) { return; }
+      sp.pend[k] = true;
+      any = true;
+      chain = chain.then(function () {
+        if (token !== S.loadToken) { delete sp.pend[k]; return null; }
+        return Sports.fetchDay(http, spDay(o)).then(function (r) {
+          delete sp.pend[k];
+          sp.tried = true;
+          sp.failed = r.failed;
+          if (r.failed.length < Sports.LEAGUES.length) { sp.days[k] = { at: Date.now(), games: r.games }; sp.ok = true; spMerge(); }
+          else if (!sp.ok) { sp.ok = false; }
+          if (token === S.loadToken && S.section === 'sports') { paintSports(); }
+        });
+      });
+    });
+    if (any) { paintSports(); }
+    chain.then(function () { if (token === S.loadToken && S.section === 'sports') { spScan(false); } });
+    return chain;
   }
 
   function spFresh(g) {
@@ -822,7 +847,7 @@
 
   function spNote(txt, retry) {
     var kids = [h('div', { cls: 'spnote', text: txt })];
-    if (retry) { kids.push(h('button', { cls: 'f btn', type: 'button', text: 'Tentar de novo', on: { click: function () { S.sp.ok = null; paintSports(); spLoad(true); } } })); }
+    if (retry) { kids.push(h('button', { cls: 'f btn', type: 'button', text: 'Tentar de novo', on: { click: function () { S.sp.ok = null; S.sp.tried = false; spEnsure(spNeeded(), true); } } })); }
     return h('div', { cls: 'spempty' }, kids);
   }
 
@@ -833,7 +858,7 @@
     for (off = -1; off <= 6; off++) {
       (function (o) {
         chips.push(h('button', { cls: 'f spchip' + (o === sp.day ? ' on' : ''), type: 'button', text: spDayLabel(o), 'data-k': 'd:' + o,
-          on: { click: function () { sp.day = o; paintSports(); } } }));
+          on: { click: function () { sp.day = o; paintSports(); spEnsure(spNeeded()); } } }));
       })(off);
     }
     body.appendChild(h('div', { cls: 'spchips' }, chips));
@@ -847,8 +872,8 @@
       }
     }
     spGroupByLeague(games).forEach(function (el) { body.appendChild(el); });
-    if (!body.querySelector('.spgroup')) { body.appendChild(spNote('Nenhum jogo das ligas acompanhadas neste dia.')); }
-    if (sp.failed && sp.failed.length) {
+    if (!body.querySelector('.spgroup')) { body.appendChild(spNote(sp.pend[key] || !sp.days[key] ? 'Carregando…' : 'Nenhum jogo das ligas acompanhadas neste dia.')); }
+    if (sp.failed && sp.failed.length >= Math.ceil(Sports.LEAGUES.length / 2)) {
       body.appendChild(h('div', { cls: 'spwarn', text: 'Não carregou: ' + sp.failed.map(function (id) { var l = Sports.league(id); return l ? l.short : id; }).join(', ') + '.' }));
     }
   }
@@ -865,7 +890,7 @@
       return el;
     })));
     var now = Date.now(), games = sp.games.filter(function (g) { return (fol[g.home.id] || fol[g.away.id]) && (g.state !== 'post' || now - g.start < 24 * 3600000); }).sort(spOrder);
-    if (!games.length) { body.appendChild(spNote('Nenhum jogo dos seus times nos próximos dias.')); return; }
+    if (!games.length) { body.appendChild(spNote(Object.keys(sp.pend).length ? 'Carregando…' : 'Nenhum jogo dos seus times nos próximos dias.')); return; }
     body.appendChild(h('div', { cls: 'spgroup' }, [h('div', { cls: 'sptitle', text: 'Jogos dos seus times' }), h('div', { cls: 'spgrid' }, games.map(function (g) { return spCard(g, { date: true }); }))]));
   }
 
@@ -924,12 +949,12 @@
   }
 
   function renderSports() {
-    if (!S.sp) { S.sp = { tab: 'scores', day: 0, games: [], failed: [], at: 0, chan: {}, chanAt: 0, game: null, ok: null }; }
+    if (!S.sp) { S.sp = { tab: 'scores', day: 0, games: [], failed: [], days: {}, pend: {}, chan: {}, chanAt: 0, game: null, ok: null }; }
     var page = S.pageEl;
     page.className = 'page scroll sports';
     page.innerHTML = '';
     var tabs = h('div', { cls: 'sptabs' }, [['scores', 'Placares'], ['teams', 'Meus times'], ['channels', 'Nos meus canais']].map(function (t) {
-      return h('button', { cls: 'f hubtab sptab', type: 'button', 'data-k': 'tab:' + t[0], text: t[1], on: { click: function () { S.sp.tab = t[0]; S.sp.game = null; paintSports(); } } });
+      return h('button', { cls: 'f hubtab sptab', type: 'button', 'data-k': 'tab:' + t[0], text: t[1], on: { click: function () { S.sp.tab = t[0]; S.sp.game = null; paintSports(); spEnsure(spNeeded()); } } });
     }));
     S.sp.bodyEl = h('div', { cls: 'spbody' });
     page.appendChild(tabs);
@@ -938,11 +963,11 @@
     if (!S.spTimer) {
       S.spTimer = setInterval(function () {
         if (S.section !== 'sports' || S.mode !== 'browse') { return; }
-        var live = S.sp.games.some(function (g) { return g.state === 'in'; });
-        if (live || Date.now() - S.sp.at > 120000) { spLoad(true); }
+        var live = S.sp.games.some(function (g) { return g.state === 'in'; }), t = S.sp.days[Sports.ymd(spDay(0))];
+        if (live || !t || Date.now() - t.at > 120000) { spEnsure(spNeeded(), true); }
       }, 30000);
     }
-    spLoad(false);
+    spEnsure(spNeeded(), false);
   }
 
   /* redesenha o corpo da tela de esportes mantendo o foco no mesmo botão */
@@ -954,7 +979,7 @@
     [].forEach.call(S.pageEl.querySelectorAll('.sptab'), function (b) { b.classList.toggle('on', b.getAttribute('data-k') === 'tab:' + sp.tab); });
     body.innerHTML = '';
     if (!sp.ok && !sp.games.length) {
-      if (sp.loading || !sp.tried) { body.appendChild(spNote('Carregando placares…')); }
+      if (Object.keys(sp.pend).length || !sp.tried) { body.appendChild(spNote('Carregando placares…')); }
       else { body.appendChild(spNote('Não consegui carregar os placares agora. A fonte gratuita pode estar fora do ar ou sem acesso daqui.', true)); }
     } else if (sp.game) { spBodyGame(body); }
     else if (sp.tab === 'teams') { spBodyTeams(body); }
@@ -2020,7 +2045,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.21.0']
+      ['Versão do app', '1.21.1']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
