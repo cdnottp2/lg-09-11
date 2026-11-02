@@ -17,6 +17,14 @@ Servidor, usuário e senha (Xtream Codes). Se algo der errado, os campos continu
 - **Player:** mostra a **resolução real** do vídeo (ex.: 1920×1080 · FHD).
 - **Gestos no player (app Android, celular):** arraste o dedo para cima/baixo na **metade esquerda** para mudar o **brilho** (levando até o mínimo, ele volta ao **automático**, o brilho do sistema) e na **direita** para mudar o **volume**; em filmes e episódios, arraste **para os lados** para avançar ou voltar (a tela mostra quanto). O brilho volta ao normal ao sair do player.
 
+## Esportes (placares)
+Na Início, **Esportes** abre a central de jogos de futebol: **Brasileirão, Copa do Brasil, Libertadores, Sul-Americana, Champions**, e de seleções **Eliminatórias, Copa América, Eurocopa, Nations League e Copa do Mundo**; os **amistosos** aparecem só quando envolvem o Brasil ou um time que você segue.
+- **Placares:** jogos de ontem a daqui a 6 dias, agrupados por liga, com **Ao vivo agora** no topo (minuto e placar atualizam sozinhos a cada 30 s). OK em um jogo abre gols, estatísticas (posse, finalizações, escanteios, faltas, cartões) e **onde assistir**.
+- **Onde assistir:** o app procura, na programação (EPG) dos seus canais de esporte e abertos, qual deles passa o jogo (pelo nome dos times) e mostra o canal no cartão; OK no botão sintoniza.
+- **Meus times:** em um jogo, **Seguir** no time; ele ganha uma estrela e a aba mostra só os jogos dele.
+- **Nos meus canais:** só os jogos encontrados na programação; OK sintoniza o melhor canal.
+- Fonte: API pública de placares da ESPN (sem chave, não oficial). Se ela mudar ou sair do ar, a tela avisa e o resto do app segue normal. O cruzamento com o canal depende de como o seu provedor escreve os títulos.
+
 ## Downloads para assistir offline (Android, celular)
 Em cada filme há o botão **Baixar**; em séries, um botão por episódio e **Baixar temporada**. O download usa o gerenciador do Android (segue com a tela apagada, mostra o progresso na notificação e retoma se a conexão cair) e, por padrão, **só no Wi-Fi**. Os arquivos ficam dentro do app (somem se o app for desinstalado). A tela **Downloads** (menu de três traços) mostra o andamento, o espaço livre e deixa assistir ou apagar; o que já foi baixado toca direto do celular e o ponto de *continuar assistindo* continua sendo salvo. **Sem internet** ao abrir, o app entra direto nos downloads. Limites: TV ao vivo e itens em .m3u8 não baixam, e cada download usa uma das conexões simultâneas do servidor IPTV.
 
@@ -52,7 +60,7 @@ Com root + Homebrew Channel também dá para copiar o `.ipk` para a TV e instala
 ## Recompilar
 ```
 npm install
-node tests/test-core.js && node tests/test-sync.js && node tests/test-dl.js && node tests/test-ui.js
+node tests/test-core.js && node tests/test-sync.js && node tests/test-sports.js && node tests/test-dl.js && node tests/test-ui.js
 npx ares-package app services --no-minify -o dist
 ```
 

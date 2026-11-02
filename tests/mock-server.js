@@ -39,10 +39,44 @@ function create() {
             '2': [{ id: '7101', episode_num: 1, title: 'Retorno', container_extension: 'mkv', season: 2, info: {} }]
           } });
         case 'get_short_epg':
+          if (String(q.stream_id) === '103') {   // canal que passa o jogo "Palmeiras x Grêmio" (veja /espn abaixo)
+            var nowS = Math.floor(Date.now() / 1000);
+            return json({ epg_listings: [{ title: b64('Palmeiras x Grêmio — Brasileirão'), description: b64('Ao vivo'), start_timestamp: String(nowS - 3600), stop_timestamp: String(nowS + 3600) },
+              { title: b64('Resenha'), description: b64('z'), start_timestamp: String(nowS + 3600), stop_timestamp: String(nowS + 7200) }] });
+          }
           return json({ epg_listings: [{ title: b64('Jornal da Noite — ação'), description: b64('x'), start_timestamp: '1', stop_timestamp: '99999999990' },
           { title: b64('Cinema da Madrugada'), description: b64('y'), start_timestamp: '99999999990', stop_timestamp: '99999999999' }] });
         default: return json([]);
       }
+    }
+    // placares (formato da API pública da ESPN) para testar a tela de Esportes
+    var em = /^\/espn\/([^/]+)\/scoreboard$/.exec(u.pathname);
+    if (em) {
+      var lg = em[1], nowMs = Date.now();
+      function tm(id, name, ab) { return { id: id, displayName: name, shortDisplayName: name, abbreviation: ab, logo: '' }; }
+      function ev(id, date, state, clock, h, a, hs, as, extra) {
+        var o = { id: id, date: new Date(date).toISOString(), status: { displayClock: clock, period: state === 'in' ? 2 : 0, type: { state: state, name: state === 'in' ? 'STATUS_SECOND_HALF' : 'STATUS_SCHEDULED', shortDetail: clock, completed: state === 'post' } },
+          competitions: [{ venue: { fullName: 'Allianz Parque' }, competitors: [
+            { homeAway: 'home', team: h, score: hs, statistics: [{ name: 'possessionPct', displayValue: '55' }, { name: 'totalShots', displayValue: '12' }] },
+            { homeAway: 'away', team: a, score: as, statistics: [{ name: 'possessionPct', displayValue: '45' }, { name: 'totalShots', displayValue: '7' }] }], details: [] }] };
+        if (extra) { o.competitions[0].details = extra; }
+        return o;
+      }
+      if (lg === 'uefa.nations') { res.writeHead(500); return res.end('erro'); }
+      var events = [];
+      if (lg === 'bra.1') {
+        events = [
+          ev('1001', nowMs - 3600000, 'in', "67'", tm('2029', 'Palmeiras', 'PAL'), tm('6273', 'Grêmio', 'GRE'), '2', '1',
+            [{ scoringPlay: true, clock: { displayValue: "23'" }, athletesInvolved: [{ displayName: 'Raphael Veiga' }], team: { id: '2029' } }]),
+          ev('1002', nowMs + 20 * 60000, 'pre', '', tm('819', 'Flamengo', 'FLA'), tm('3454', 'Vasco da Gama', 'VAS'), '0', '0')
+        ];
+      } else if (lg === 'fifa.friendly') {
+        events = [
+          ev('2001', nowMs + 2 * 86400000, 'pre', '', tm('205', 'Brazil', 'BRA'), tm('654', 'Senegal', 'SEN'), '0', '0'),
+          ev('2002', nowMs + 2 * 86400000, 'pre', '', tm('160', 'France', 'FRA'), tm('164', 'Spain', 'ESP'), '0', '0')
+        ];
+      }
+      return json({ events: events });
     }
     if (u.pathname === '/lista.m3u') {
       res.writeHead(200, { 'Content-Type': 'audio/x-mpegurl' });

@@ -63,7 +63,7 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
     function key(code) { d.dispatchEvent(new w.KeyboardEvent('keydown', { keyCode: code, bubbles: true, cancelable: true })); }
     // navega pelo menu inicial: volta ao menu (se preciso) e abre a seção
     function go(sec) {
-      while (!$('.hubtab') && $('.backbtn')) { $('.backbtn').click(); } // a busca de seção volta primeiro à seção, depois ao menu
+      while (!$('.hubtab[data-sec]') && $('.backbtn')) { $('.backbtn').click(); } // a busca de seção volta primeiro à seção, depois ao menu
       if (sec === 'home') { return; }
       if (sec === 'settings') { $('.menubtn').click(); $('.drawer-settings').click(); return; } // Configurações ficam no menu lateral
       $('[data-sec="' + sec + '"]').click();
@@ -102,9 +102,9 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       step('erro de login mantém os dados nos campos');
       inputs[2].value = 'segredo';
       $('.btn.primary').click();
-      return waitFor(function () { return $$('.hubtab').length === 3; }, 'menu inicial');
+      return waitFor(function () { return $$('.hubtab').length === 4; }, 'menu inicial');
     }).then(function () {
-      assert.deepStrictEqual($$('.hubtab').map(function (e) { return e.textContent; }), ['TV ao vivo', 'Filmes', 'Séries']);
+      assert.deepStrictEqual($$('.hubtab').map(function (e) { return e.textContent; }), ['TV ao vivo', 'Filmes', 'Séries', 'Esportes']);
       assert.ok($('.hubtab.focus'), 'foco no primeiro item do menu');
       assert.ok(!$('.side'), 'sem barra lateral');
       assert.ok(!$('.hub-links') && !$$('.hub-links .btn').length, 'sem botões de atalho embaixo (Buscar/Configurações vão no topo)');
@@ -403,15 +403,15 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       btns('Blocos grandes').click();
       assert.strictEqual(w.localStorage.getItem('iptv.homestyle'), '"blocks"', 'escolha guardada neste aparelho');
       $('.backbtn').click();
-      return waitFor(function () { return $$('.hubtile').length === 3; }, 'blocos grandes');
+      return waitFor(function () { return $$('.hubtile').length === 4; }, 'blocos grandes');
     }).then(function () {
-      assert.deepStrictEqual($$('.hubname').map(function (e) { return e.textContent; }), ['TV ao vivo', 'Filmes', 'Séries']);
+      assert.deepStrictEqual($$('.hubname').map(function (e) { return e.textContent; }), ['TV ao vivo', 'Filmes', 'Séries', 'Esportes']);
       assert.ok(!$('.hubtab'), 'sem abas quando o estilo é blocos');
       $$('.hubtile')[1].click();
       return waitFor(function () { return $('.sectitle') && /Filmes/.test($('.sectitle').textContent); }, 'abre Filmes pelo bloco');
     }).then(function () {
       $('.backbtn').click();
-      return waitFor(function () { return $$('.hubtile').length === 3 && $('.hubtile.focus'); }, 'volta aos blocos');
+      return waitFor(function () { return $$('.hubtile').length === 4 && $('.hubtile.focus'); }, 'volta aos blocos');
     }).then(function () {
       assert.strictEqual($('.hubtile.focus').getAttribute('data-sec'), 'movie', 'foco volta ao bloco de Filmes');
       step('estilo da Início: blocos grandes (e opção nas configurações)');
@@ -420,10 +420,54 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
     }).then(function () {
       $$('.settings .btn').filter(function (x) { return x.textContent === 'Abas no topo'; })[0].click();
       $('.backbtn').click();
-      return waitFor(function () { return $$('.hubtab').length === 3 && !$('.hubtile'); }, 'abas de novo');
+      return waitFor(function () { return $$('.hubtab').length === 4 && !$('.hubtile'); }, 'abas de novo');
     }).then(function () {
       go('settings');
       return waitFor(function () { return $('.settings .sgroup'); }, 'config 6');
+    }).then(function () {
+      // Esportes: placares (fonte simulada), canal pela programação, meus times, filtro de amistosos
+      w.Sports.setBase(base + '/espn');
+      go('home');
+      assert.ok($('[data-sec="sports"]'), 'Esportes aparece na Início');
+      go('sports');
+      return waitFor(function () { return $$('.spcard').length >= 1; }, 'placares');
+    }).then(function () {
+      var txt = $('.sports').textContent;
+      assert.ok(/Ao vivo agora/.test(txt) && /AO VIVO 67'/.test(txt) && /Palmeiras/.test(txt) && /Grêmio/.test(txt), 'jogo ao vivo com minuto: ' + txt.slice(0, 160));
+      assert.ok(/Flamengo/.test(txt) && !/France/.test(txt), 'amistoso sem o Brasil fica de fora');
+      assert.ok(/Brasileirão/.test(txt), 'agrupa por liga');
+      return waitFor(function () { return /Canal Esporte 2/.test($('.spcard.live').textContent); }, 'canal do jogo na programação');
+    }).then(function () {
+      assert.ok($('.spwarn') && /Nations League/.test($('.spwarn').textContent), 'avisa a liga que não carregou');
+      $('.spcard.live').click();
+      assert.ok(/Raphael Veiga/.test($('.sports').textContent) && /Posse de bola/.test($('.sports').textContent) && /55%/.test($('.sports').textContent), 'gols e estatísticas');
+      var pl = $$('.spplay')[0];
+      assert.ok(pl && /Canal Esporte 2/.test(pl.textContent), 'botão para assistir no canal');
+      var fb = $$('.sports .btn').filter(function (b) { return /Seguir Palmeiras/.test(b.textContent); })[0];
+      fb.click();
+      assert.ok(/Seguindo Palmeiras/.test($('.sports').textContent) && JSON.parse(w.localStorage.getItem('iptv.sportteams'))['2029'], 'segue o time');
+      key(27);
+      assert.ok($('.spcard') && !$('.spback'), 'Voltar sai do jogo e volta à lista');
+      assert.ok($('.spstar'), 'estrela no time seguido');
+      $('.spcard.live').click();
+      $$('.spplay')[0].click();
+      assert.ok(!$('#player').classList.contains('hidden') && /103/.test($('#video').getAttribute('src')), 'assiste no canal: ' + $('#video').getAttribute('src'));
+      key(413);
+      assert.ok($('#player').classList.contains('hidden'));
+      key(27);
+      $('[data-k="tab:teams"]').click();
+      assert.ok($('.spchip.team') && /Palmeiras/.test($('.sports').textContent), 'Meus times mostra o time e o jogo');
+      $('[data-k="tab:channels"]').click();
+      assert.ok(/Canal Esporte 2/.test($('.sports').textContent), 'aba de canais lista o jogo com o canal');
+      $('[data-k="tab:scores"]').click();
+      $('[data-k="d:2"]').click();
+      assert.ok(/Brazil/.test($('.sports').textContent) && !/France/.test($('.sports').textContent), 'amistoso do Brasil aparece em outro dia');
+      step('esportes: placares, canal pela programação, seguir time, amistosos só do Brasil');
+      go('home');
+      assert.ok($('.hubtab, .hubtile'));
+      assert.ok(!$('.spchips'), 'saiu da tela de esportes');
+      go('settings');
+      return waitFor(function () { return $('.settings .sgroup'); }, 'config 7');
     }).then(function () {
       // perfis: criar, trocar, dados separados
       var favs0 = w.localStorage.getItem('iptv.fav');

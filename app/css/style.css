@@ -661,3 +661,94 @@ body.portrait #player.mini #mini-open .ico svg { width: 14px; height: 14px; }
 #osd-tracks.focus .ico { color: #0b101a; }
 body.compact #osd-tracks { height: 42px; line-height: 42px; font-size: 18px; padding: 0 18px; margin-top: 8px; }
 body.portrait #osd-tracks { height: 32px; line-height: 32px; font-size: 13px; padding: 0 12px; margin-top: 6px; }
+
+/* esportes */
+.hub-tiles .hubtile { margin-right: 28px; }
+.hubtile.t-sports { background: linear-gradient(135deg, #1f3a1f 0%, #121b2b 70%); }
+.sports { padding: 18px 70px 60px; }
+.sptabs { display: flex; justify-content: center; margin-bottom: 18px; }
+.sptab.on { background: rgba(255,255,255,.14); border-color: #fff; color: #fff; }
+.sptab.on.f.focus { background: #fff; color: #0b101a; }
+.spchips { display: flex; flex-wrap: wrap; margin: 0 0 14px; }
+.spchip { display: flex; align-items: center; height: 54px; padding: 0 22px; margin: 0 10px 10px 0; border-radius: 27px; background: #172238; color: #dfe6f3; font-size: 24px; font-weight: 600; border: 0; }
+.spchip.on { background: #3ab4e0; color: #04202c; }
+.spchip.f.focus { background: #fff; color: #0b101a; box-shadow: 0 0 0 3px #fff; }
+.spchip.team span { margin: 0 10px; }
+.sptitle { font-size: 30px; font-weight: 700; margin: 16px 0 10px; }
+.spgrid { display: flex; flex-wrap: wrap; }
+.spcard { position: relative; width: 430px; margin: 0 22px 22px 0; padding: 14px 18px 14px; border-radius: 16px; background: #131c2e; border: 0; text-align: left; color: #e9eef7; }
+.spcard.live { box-shadow: inset 4px 0 0 #e0443a; }
+.spcard.f.focus { box-shadow: 0 0 0 3px #3ab4e0, 0 0 24px rgba(58,180,224,.4); transform: scale(1.03); }
+.sptop { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 18px; }
+.splg { color: #8a97ad; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+.spst { color: #c7d0e0; font-weight: 700; }
+.spst.live { color: #fff; background: #c9372c; padding: 1px 10px; border-radius: 8px; }
+.spst.done { color: #8a97ad; }
+.sprow { display: flex; align-items: center; height: 54px; font-size: 26px; }
+.sprow.win .spname, .sprow.win .spscore { color: #fff; font-weight: 800; }
+.spname { flex: 1; margin: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #dfe6f3; }
+.spscore { min-width: 40px; text-align: right; font-size: 30px; font-weight: 800; }
+.spstar { display: flex; margin-right: 8px; color: #ffc83d; }
+.splogo { width: 40px; height: 40px; flex: none; display: flex; align-items: center; justify-content: center; }
+.splogo img { max-width: 100%; max-height: 100%; }
+.splogo.sm { width: 30px; height: 30px; }
+.splogo.xl { width: 120px; height: 120px; margin: 0 auto; }
+.spch { display: flex; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.08); font-size: 20px; color: #3ab4e0; font-weight: 600; }
+.spch .ico { margin-right: 8px; display: flex; }
+.spempty { padding: 40px 10px; font-size: 26px; color: #8a97ad; }
+.spempty .btn { margin-top: 22px; }
+.spnote { font-size: 24px; color: #8a97ad; margin-bottom: 14px; }
+.spnote.small { font-size: 20px; }
+.spwarn { font-size: 18px; color: #8a97ad; margin-top: 10px; }
+.spscoreboard { display: flex; align-items: center; justify-content: center; margin: 10px 0 20px; }
+.spbig { width: 340px; text-align: center; }
+.spbname { font-size: 28px; font-weight: 700; margin-top: 10px; }
+.spbscore { font-size: 84px; font-weight: 800; line-height: 1.1; }
+.spmid { width: 340px; text-align: center; }
+.spmid .spst { display: inline-block; margin: 8px 0; font-size: 26px; }
+.spdate { font-size: 20px; color: #8a97ad; }
+.spgoals { font-size: 24px; margin-bottom: 8px; }
+.spgoal { padding: 3px 0; }
+.spgoal.away { text-align: right; }
+.spstats { max-width: 800px; }
+.spstat { display: flex; justify-content: space-between; padding: 8px 0; font-size: 24px; border-bottom: 1px solid rgba(255,255,255,.07); }
+.spstat .l { color: #8a97ad; flex: 1; text-align: center; }
+.spstat .a, .spstat .b { min-width: 90px; font-weight: 700; }
+.spstat .b { text-align: right; }
+.spwatch { display: flex; flex-wrap: wrap; margin: 6px 0 12px; }
+.spwatch .btn { margin: 0 14px 12px 0; }
+.spplay small { margin-left: 12px; font-size: 16px; opacity: .75; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spback { margin-bottom: 8px; }
+body.compact .sports { padding: 10px 36px 40px; }
+body.compact .spcard { width: 330px; padding: 10px 14px; margin: 0 14px 14px 0; }
+body.compact .sprow { height: 40px; font-size: 20px; }
+body.compact .spscore { font-size: 22px; }
+body.compact .splogo { width: 30px; height: 30px; }
+body.compact .splogo.xl { width: 80px; height: 80px; }
+body.compact .spchip { height: 40px; font-size: 18px; padding: 0 16px; margin: 0 8px 8px 0; border-radius: 20px; }
+body.compact .sptitle { font-size: 22px; }
+body.compact .sptop, body.compact .spch { font-size: 15px; }
+body.compact .spbscore { font-size: 56px; }
+body.compact .spbname { font-size: 20px; }
+body.compact .spbig, body.compact .spmid { width: 220px; }
+body.compact .spnote, body.compact .spempty, body.compact .spgoals, body.compact .spstat { font-size: 18px; }
+body.portrait .sports { padding: 8px 12px 40px; }
+body.portrait .sptabs { margin-bottom: 10px; }
+body.portrait .sptab { font-size: 13px; padding: 0 4px; }
+body.portrait .spcard { width: 100%; margin: 0 0 10px; }
+body.portrait .spchip { height: 34px; font-size: 14px; padding: 0 12px; margin: 0 6px 6px 0; border-radius: 17px; }
+body.portrait .spchips { flex-wrap: nowrap; overflow-x: auto; }
+body.portrait .spchip { flex: none; }
+body.portrait .sprow { height: 38px; font-size: 18px; }
+body.portrait .spscore { font-size: 22px; }
+body.portrait .splogo { width: 28px; height: 28px; }
+body.portrait .splogo.xl { width: 64px; height: 64px; }
+body.portrait .sptitle { font-size: 18px; }
+body.portrait .spbig, body.portrait .spmid { width: 33%; }
+body.portrait .spbname { font-size: 14px; }
+body.portrait .spbscore { font-size: 40px; }
+body.portrait .spdate { font-size: 12px; }
+body.portrait .spmid .spst { font-size: 15px; }
+body.portrait .spnote, body.portrait .spempty { font-size: 16px; }
+body.portrait .spgoals, body.portrait .spstat { font-size: 16px; }
+body.portrait .spplay small { display: none; }

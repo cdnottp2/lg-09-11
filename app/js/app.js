@@ -8,7 +8,7 @@
   function $(id) { return document.getElementById(id); }
 
   /* perfis: cada perfil tem o seu histórico, favoritos, preferências etc. O perfil "p1" usa as chaves antigas (nada se perde). */
-  var PROF_KEYS = { verpref: 1, fav: 1, resume: 1, last: 1, cont: 1, recent: 1, opts: 1, lastlive: 1, intro: 1, trackpref: 1, city: 1, hist: 1, cat: 1, tomb: 1, favmeta: 1, synccode: 1 };
+  var PROF_KEYS = { verpref: 1, fav: 1, resume: 1, last: 1, cont: 1, recent: 1, opts: 1, lastlive: 1, intro: 1, trackpref: 1, city: 1, hist: 1, cat: 1, tomb: 1, favmeta: 1, synccode: 1, sportteams: 1 };
   var curProf = 'p1';
   try { curProf = JSON.parse(localStorage.getItem('iptv.curprof')) || 'p1'; } catch (e0) {}
   function pk(k) { return (PROF_KEYS[k.split(':')[0]] && curProf !== 'p1') ? curProf + '.' + k : k; }
@@ -68,6 +68,7 @@
     fog: '<path d="M4 8h16M3 12h18M5 16h14M8 20h8"/>',
     check: '<path d="M5 12.5l5 5 9-10.5"/>',
     cc: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10.5 10.3a2.4 2.4 0 1 0 0 3.4M17 10.3a2.4 2.4 0 1 0 0 3.4"/>',
+    sports: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5l3.8 2.8-1.4 4.4H9.6l-1.4-4.4zM12 3v4.5M3.6 9.8l4.6.5M20.4 9.8l-4.6.5M7 19.5l1.6-4.8M17 19.5l-1.6-4.8"/>',
     av_smile: '<circle cx="12" cy="12" r="9"/><path d="M8.3 14.3a4.6 4.6 0 0 0 7.4 0M9 9.6v.01M15 9.6v.01"/>',
     av_bolt: '<path d="M13 3L5.5 13.5H11L10 21l8.5-11H13z"/>',
     av_heart: '<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.2 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>',
@@ -684,6 +685,289 @@
     Nav.focus(input);
   }
 
+
+  /* ---------- esportes: placares, meus times e jogos nos seus canais ---------- */
+
+  function spFollow() { return store.get('sportteams', {}); }
+  function spToggleFollow(t) {
+    var f = spFollow();
+    if (f[t.id]) { delete f[t.id]; toast('Deixou de seguir ' + t.name, 1600); }
+    else { f[t.id] = { id: t.id, name: t.name, logo: t.logo }; toast('Seguindo ' + t.name, 1600); }
+    store.set('sportteams', f);
+  }
+  function spDay(off) { var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + off); return d; }
+  var SP_WD = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  function spDayLabel(off) {
+    if (off === -1) { return 'Ontem'; }
+    if (off === 0) { return 'Hoje'; }
+    if (off === 1) { return 'Amanhã'; }
+    var d = spDay(off);
+    return SP_WD[d.getDay()] + ' ' + (d.getDate() < 10 ? '0' : '') + d.getDate();
+  }
+  function spGame(g) { return g.league + ':' + g.id; }
+  var spEpg = {};
+
+  function spLoad(force) {
+    var sp = S.sp, token = S.loadToken;
+    if (sp.loading) { return; }
+    if (!force && sp.at && Date.now() - sp.at < 45000) { spScan(false); return; }
+    sp.loading = true;
+    Sports.fetch(http, { from: spDay(-1), to: spDay(6) }).then(function (r) {
+      sp.loading = false;
+      sp.tried = true;
+      sp.failed = r.failed;
+      if (r.failed.length < Sports.LEAGUES.length) { sp.games = r.games; sp.at = Date.now(); sp.ok = true; if (sp.game) { sp.game = spFresh(sp.game); } }
+      else if (!sp.games.length) { sp.ok = false; }
+      if (token !== S.loadToken || S.section !== 'sports') { return; }
+      paintSports();
+      spScan(false);
+    });
+  }
+
+  function spFresh(g) {
+    var i, list = S.sp.games;
+    for (i = 0; i < list.length; i++) { if (spGame(list[i]) === spGame(g)) { return list[i]; } }
+    return g;
+  }
+
+  /* procura, na programação dos seus canais, qual deles passa cada jogo (ao vivo ou nas próximas 12 h) */
+  function spScan(force) {
+    var sp = S.sp, now = Date.now(), token = S.loadToken;
+    if (!S.provider || !S.provider.hasEpg || sp.scanning) { return; }
+    if (!force && sp.chanAt && now - sp.chanAt < 300000) { return; }
+    var fol = spFollow();
+    var want = sp.games.filter(function (g) {
+      return Sports.visible(g, fol) && (g.state === 'in' || (g.state === 'pre' && g.start > now - 3600000 && g.start - now < 12 * 3600000));
+    });
+    if (!want.length) { sp.chan = {}; sp.chanAt = now; paintSports(); return; }
+    sp.scanning = true;
+    paintSports();
+    Promise.all([S.provider.categories('live'), S.provider.all('live')]).then(function (r) {
+      var cands = Sports.candidateChannels(filterLive(r[1]), r[0], 160), progs = {}, i = 0, busy = 0;
+      return new Promise(function (resolve) {
+        function pump() {
+          if (token !== S.loadToken) { resolve(null); return; }
+          while (busy < 4 && i < cands.length) {
+            (function (ch) {
+              var c = spEpg[ch.id];
+              if (c && Date.now() - c.at < 300000) { progs[ch.id] = c.list; return; }
+              busy++;
+              S.provider.epg(ch).then(function (list) { return list; }, function () { return []; }).then(function (list) {
+                spEpg[ch.id] = { at: Date.now(), list: list };
+                progs[ch.id] = list;
+                busy--;
+                pump();
+              });
+            })(cands[i++]);
+          }
+          if (busy === 0 && i >= cands.length) { resolve(Sports.assign(want, cands, progs)); }
+        }
+        pump();
+      });
+    }).then(function (res) {
+      sp.scanning = false;
+      if (res) { sp.chan = res; sp.chanAt = Date.now(); }
+      if (token === S.loadToken && S.section === 'sports') { paintSports(); }
+    }, function () { sp.scanning = false; sp.chanAt = Date.now(); });
+  }
+
+  function spHits(g) { return (S.sp.chan && S.sp.chan[spGame(g)]) || []; }
+
+  function spPlay(g, idx) {
+    var hits = spHits(g);
+    if (!hits.length) { return; }
+    startPlay({ kind: 'live', list: hits.map(function (x) { return x.ch; }), idx: idx || 0 });
+  }
+
+  function spLogo(t, cls) {
+    var el = h('div', { cls: cls || 'splogo' });
+    if (t.logo) { imgEl(t.logo, el); }
+    return el;
+  }
+
+  function spCard(g, o) {
+    o = o || {};
+    var fol = spFollow(), hits = spHits(g), live = g.state === 'in';
+    function trow(t) {
+      return h('div', { cls: 'sprow' + (t.winner ? ' win' : '') }, [
+        spLogo(t), h('div', { cls: 'spname', text: t.name }),
+        fol[t.id] ? h('span', { cls: 'spstar' }, [icon('starfill', 20)]) : null,
+        h('div', { cls: 'spscore', text: g.state === 'pre' ? '' : t.score })
+      ]);
+    }
+    var st = Sports.statusText(g);
+    if (o.date && g.state === 'pre') { st = SP_WD[new Date(g.start).getDay()] + ' ' + st; }
+    var ch = null;
+    if (hits.length) {
+      ch = h('div', { cls: 'spch' }, [icon('live', 18), h('span', { text: hits[0].ch.name + (hits.length > 1 ? '  +' + (hits.length - 1) : '') })]);
+    }
+    return h('button', { cls: 'f spcard' + (live ? ' live' : ''), type: 'button', 'data-k': 'g:' + spGame(g), on: { click: function () {
+      if (o.play && hits.length) { spPlay(g, 0); } else { S.sp.game = g; renderSports(); }
+    } } }, [
+      h('div', { cls: 'sptop' }, [h('div', { cls: 'splg', text: g.leagueName }), h('div', { cls: 'spst' + (live ? ' live' : (g.state === 'post' ? ' done' : '')), text: st })]),
+      trow(g.home), trow(g.away), ch
+    ]);
+  }
+
+  function spGroupByLeague(games, o) {
+    var out = [];
+    Sports.LEAGUES.forEach(function (lg) {
+      var l = games.filter(function (g) { return g.league === lg.id; });
+      if (l.length) {
+        out.push(h('div', { cls: 'spgroup' }, [h('div', { cls: 'sptitle', text: lg.name }), h('div', { cls: 'spgrid' }, l.map(function (g) { return spCard(g, o); }))]));
+      }
+    });
+    return out;
+  }
+
+  function spNote(txt, retry) {
+    var kids = [h('div', { cls: 'spnote', text: txt })];
+    if (retry) { kids.push(h('button', { cls: 'f btn', type: 'button', text: 'Tentar de novo', on: { click: function () { S.sp.ok = null; paintSports(); spLoad(true); } } })); }
+    return h('div', { cls: 'spempty' }, kids);
+  }
+
+  function spOrder(a, b) { return (b.state === 'in') - (a.state === 'in') || a.start - b.start; }
+
+  function spBodyScores(body) {
+    var sp = S.sp, fol = spFollow(), chips = [], off;
+    for (off = -1; off <= 6; off++) {
+      (function (o) {
+        chips.push(h('button', { cls: 'f spchip' + (o === sp.day ? ' on' : ''), type: 'button', text: spDayLabel(o), 'data-k': 'd:' + o,
+          on: { click: function () { sp.day = o; paintSports(); } } }));
+      })(off);
+    }
+    body.appendChild(h('div', { cls: 'spchips' }, chips));
+    var key = Sports.dayKey(spDay(sp.day).getTime());
+    var games = sp.games.filter(function (g) { return Sports.dayKey(g.start) === key && g.state !== 'in' && Sports.visible(g, fol); }).sort(spOrder);
+    if (sp.day === 0) {
+      // jogos ao vivo aparecem sempre em "Hoje", mesmo os que começaram antes da meia-noite
+      var live = sp.games.filter(function (g) { return g.state === 'in' && Sports.visible(g, fol); }).sort(spOrder);
+      if (live.length) {
+        body.appendChild(h('div', { cls: 'spgroup' }, [h('div', { cls: 'sptitle', text: 'Ao vivo agora' }), h('div', { cls: 'spgrid' }, live.map(function (g) { return spCard(g); }))]));
+      }
+    }
+    spGroupByLeague(games).forEach(function (el) { body.appendChild(el); });
+    if (!body.querySelector('.spgroup')) { body.appendChild(spNote('Nenhum jogo das ligas acompanhadas neste dia.')); }
+    if (sp.failed && sp.failed.length) {
+      body.appendChild(h('div', { cls: 'spwarn', text: 'Não carregou: ' + sp.failed.map(function (id) { var l = Sports.league(id); return l ? l.short : id; }).join(', ') + '.' }));
+    }
+  }
+
+  function spBodyTeams(body) {
+    var sp = S.sp, fol = spFollow(), ids = Object.keys(fol);
+    if (!ids.length) {
+      body.appendChild(spNote('Você ainda não segue nenhum time. Abra um jogo e escolha "Seguir" no time que quiser: ele ganha uma estrela e aparece aqui.'));
+      return;
+    }
+    body.appendChild(h('div', { cls: 'spchips' }, ids.map(function (id) {
+      var t = fol[id], el = h('button', { cls: 'f spchip team', type: 'button', 'data-k': 't:' + id, title: 'Deixar de seguir',
+        on: { click: function () { spToggleFollow(t); paintSports(); } } }, [spLogo(t, 'splogo sm'), h('span', { text: t.name }), icon('xmark', 18)]);
+      return el;
+    })));
+    var now = Date.now(), games = sp.games.filter(function (g) { return (fol[g.home.id] || fol[g.away.id]) && (g.state !== 'post' || now - g.start < 24 * 3600000); }).sort(spOrder);
+    if (!games.length) { body.appendChild(spNote('Nenhum jogo dos seus times nos próximos dias.')); return; }
+    body.appendChild(h('div', { cls: 'spgroup' }, [h('div', { cls: 'sptitle', text: 'Jogos dos seus times' }), h('div', { cls: 'spgrid' }, games.map(function (g) { return spCard(g, { date: true }); }))]));
+  }
+
+  function spBodyChannels(body) {
+    var sp = S.sp, now = Date.now();
+    if (!S.provider || !S.provider.hasEpg) { body.appendChild(spNote('Este servidor não tem guia de programação, então não dá para ligar o jogo ao canal.')); return; }
+    var games = sp.games.filter(function (g) { return spHits(g).length; }).sort(spOrder);
+    if (sp.scanning && !games.length) { body.appendChild(spNote('Procurando o jogo nos seus canais…')); return; }
+    if (!games.length) {
+      body.appendChild(spNote('Nenhum jogo ao vivo ou das próximas horas foi encontrado nos seus canais. Ele depende do nome dos times na programação do seu provedor.'));
+      body.appendChild(h('button', { cls: 'f btn', type: 'button', text: 'Procurar de novo', on: { click: function () { spScan(true); } } }));
+      return;
+    }
+    body.appendChild(h('div', { cls: 'spnote small', text: 'OK sintoniza o canal. ' + (sp.scanning ? 'Atualizando…' : '') }));
+    body.appendChild(h('div', { cls: 'spgrid' }, games.map(function (g) { return spCard(g, { play: true, date: true }); })));
+  }
+
+  function spStatRow(label, a, b) {
+    if (!a && !b) { return null; }
+    return h('div', { cls: 'spstat' }, [h('span', { cls: 'a', text: a || '–' }), h('span', { cls: 'l', text: label }), h('span', { cls: 'b', text: b || '–' })]);
+  }
+
+  function spBodyGame(body) {
+    var sp = S.sp, g = sp.game, hits = spHits(g), fol = spFollow(), a = g.home.stats, b = g.away.stats;
+    body.appendChild(h('button', { cls: 'f btn spback', type: 'button', 'data-k': 'back', on: { click: function () { sp.game = null; renderSports(); } } }, [icon('back', 24), 'Jogos']));
+    function big(t) {
+      return h('div', { cls: 'spbig' }, [spLogo(t, 'splogo xl'), h('div', { cls: 'spbname', text: t.name }), h('div', { cls: 'spbscore', text: g.state === 'pre' ? '–' : t.score })]);
+    }
+    body.appendChild(h('div', { cls: 'spscoreboard' }, [big(g.home), h('div', { cls: 'spmid' }, [
+      h('div', { cls: 'splg', text: g.leagueName }), h('div', { cls: 'spst' + (g.state === 'in' ? ' live' : ''), text: Sports.statusText(g) }),
+      h('div', { cls: 'spdate', text: SP_WD[new Date(g.start).getDay()] + ' ' + new Date(g.start).getDate() + '/' + (new Date(g.start).getMonth() + 1) + (g.venue ? ' · ' + g.venue : '') })
+    ]), big(g.away)]));
+    if (g.goals.length) {
+      body.appendChild(h('div', { cls: 'sptitle', text: 'Gols' }));
+      body.appendChild(h('div', { cls: 'spgoals' }, g.goals.map(function (x) {
+        return h('div', { cls: 'spgoal' + (x.home ? '' : ' away'), text: (x.min ? x.min + '  ' : '') + x.who + (x.pen ? ' (pênalti)' : '') + (x.own ? ' (contra)' : '') });
+      })));
+    }
+    var rows = [spStatRow('Posse de bola', a.poss && a.poss + '%', b.poss && b.poss + '%'), spStatRow('Finalizações', a.shots, b.shots), spStatRow('No alvo', a.sot, b.sot),
+      spStatRow('Escanteios', a.corners, b.corners), spStatRow('Faltas', a.fouls, b.fouls), spStatRow('Amarelos', a.yellow, b.yellow), spStatRow('Vermelhos', a.red, b.red)].filter(Boolean);
+    if (rows.length && g.state !== 'pre') { body.appendChild(h('div', { cls: 'sptitle', text: 'Estatísticas' })); body.appendChild(h('div', { cls: 'spstats' }, rows)); }
+    body.appendChild(h('div', { cls: 'sptitle', text: 'Onde assistir (seus canais)' }));
+    if (hits.length) {
+      body.appendChild(h('div', { cls: 'spwatch' }, hits.slice(0, 6).map(function (x, i) {
+        return h('button', { cls: 'f btn spplay' + (i === 0 ? ' primary' : ''), type: 'button', 'data-k': 'p:' + i, on: { click: function () { spPlay(g, i); } } },
+          [icon('play', 22), x.ch.name, h('small', { text: x.prog && x.prog.title ? x.prog.title : '' })]);
+      })));
+    } else {
+      body.appendChild(h('div', { cls: 'spnote small', text: !S.provider || !S.provider.hasEpg ? 'Este servidor não tem guia de programação.' : (sp.scanning ? 'Procurando nos seus canais…' : 'Nenhum dos seus canais parece passar este jogo agora (ou o provedor escreve os nomes de outro jeito).') }));
+    }
+    body.appendChild(h('div', { cls: 'spwatch' }, [g.home, g.away].map(function (t) {
+      var on = !!fol[t.id];
+      return h('button', { cls: 'f btn', type: 'button', 'data-k': 'f:' + t.id, on: { click: function () { spToggleFollow(t); paintSports(); } } },
+        [icon(on ? 'starfill' : 'star', 22), (on ? 'Seguindo ' : 'Seguir ') + t.name]);
+    })));
+  }
+
+  function renderSports() {
+    if (!S.sp) { S.sp = { tab: 'scores', day: 0, games: [], failed: [], at: 0, chan: {}, chanAt: 0, game: null, ok: null }; }
+    var page = S.pageEl;
+    page.className = 'page scroll sports';
+    page.innerHTML = '';
+    var tabs = h('div', { cls: 'sptabs' }, [['scores', 'Placares'], ['teams', 'Meus times'], ['channels', 'Nos meus canais']].map(function (t) {
+      return h('button', { cls: 'f hubtab sptab', type: 'button', 'data-k': 'tab:' + t[0], text: t[1], on: { click: function () { S.sp.tab = t[0]; S.sp.game = null; paintSports(); } } });
+    }));
+    S.sp.bodyEl = h('div', { cls: 'spbody' });
+    page.appendChild(tabs);
+    page.appendChild(S.sp.bodyEl);
+    paintSports(true);
+    if (!S.spTimer) {
+      S.spTimer = setInterval(function () {
+        if (S.section !== 'sports' || S.mode !== 'browse') { return; }
+        var live = S.sp.games.some(function (g) { return g.state === 'in'; });
+        if (live || Date.now() - S.sp.at > 120000) { spLoad(true); }
+      }, 30000);
+    }
+    spLoad(false);
+  }
+
+  /* redesenha o corpo da tela de esportes mantendo o foco no mesmo botão */
+  function paintSports(first) {
+    var sp = S.sp;
+    if (!sp || S.section !== 'sports' || !sp.bodyEl || !document.body.contains(sp.bodyEl)) { return; }
+    var cur = Nav.current(), key = cur && cur.getAttribute ? cur.getAttribute('data-k') : null, body = sp.bodyEl;
+    var scroll = S.pageEl.scrollTop;
+    [].forEach.call(S.pageEl.querySelectorAll('.sptab'), function (b) { b.classList.toggle('on', b.getAttribute('data-k') === 'tab:' + sp.tab); });
+    body.innerHTML = '';
+    if (!sp.ok && !sp.games.length) {
+      if (sp.loading || !sp.tried) { body.appendChild(spNote('Carregando placares…')); }
+      else { body.appendChild(spNote('Não consegui carregar os placares agora. A fonte gratuita pode estar fora do ar ou sem acesso daqui.', true)); }
+    } else if (sp.game) { spBodyGame(body); }
+    else if (sp.tab === 'teams') { spBodyTeams(body); }
+    else if (sp.tab === 'channels') { spBodyChannels(body); }
+    else { spBodyScores(body); }
+    S.pageEl.scrollTop = scroll;
+    var el = key ? S.pageEl.querySelector('[data-k="' + key + '"]') : null;
+    if (!el && first) { el = S.pageEl.querySelector('.sptab.on') || S.pageEl.querySelector('.sptab'); }
+    if (!el && sp.game) { el = body.querySelector('.spplay') || body.querySelector('.f'); }
+    if (el) { Nav.focus(el); }
+    else if (!Nav.current()) { Nav.focus(S.pageEl.querySelector('.sptab') || S.headEl.querySelector('.f')); }
+  }
+
   /* ---------- login ---------- */
 
   function showLogin(msg, canCancel) {
@@ -770,7 +1054,7 @@
 
   /* ---------- estrutura: menu inicial + uma tela por seção ---------- */
 
-  var SECT = { live: 'TV ao vivo', movie: 'Filmes', series: 'Séries', search: 'Buscar', fav: 'Favoritos', settings: 'Configurações', dl: 'Downloads' };
+  var SECT = { live: 'TV ao vivo', movie: 'Filmes', series: 'Séries', search: 'Buscar', fav: 'Favoritos', settings: 'Configurações', dl: 'Downloads', sports: 'Esportes' };
 
   function showBrowse() {
     S.mode = 'browse';
@@ -877,6 +1161,7 @@
   function selectSection(sec, opts) {
     opts = opts || {};
     if (S.dlTimer) { clearInterval(S.dlTimer); S.dlTimer = null; }
+    if (S.spTimer) { clearInterval(S.spTimer); S.spTimer = null; }
     if (S.offline && sec !== 'dl') { sec = 'dl'; }
     S.section = sec;
     S.backTo = opts.backTo || 'home';
@@ -896,6 +1181,7 @@
     if (sec === 'home') { renderHome(); cloudSoon(0, true); return; }
     Nav.focus(S.headEl.querySelector('.f'));
     if (sec === 'dl') { renderDownloads(); return; }
+    if (sec === 'sports') { renderSports(); return; }
     if (sec === 'settings') { renderSettings(); return; }
     if (sec === 'search') { buildContentOnly(); renderSearch(); return; }
     if (sec === 'fav') { buildContentOnly(); renderFavs(); return; }
@@ -1377,10 +1663,10 @@
     page.className = 'page scroll home';
     if (homeStyle() === 'blocks') {
       page.appendChild(h('div', { cls: 'hub-tiles' }, [
-        hubTile('live', 'Canais e programação'), hubTile('movie', 'Catálogo de filmes'), hubTile('series', 'Séries e episódios')
+        hubTile('live', 'Canais e programação'), hubTile('movie', 'Catálogo de filmes'), hubTile('series', 'Séries e episódios'), hubTile('sports', 'Placares e jogos')
       ]));
     } else {
-      page.appendChild(h('div', { cls: 'hubtabs' }, [hubTab('live'), hubTab('movie'), hubTab('series')]));
+      page.appendChild(h('div', { cls: 'hubtabs' }, [hubTab('live'), hubTab('movie'), hubTab('series'), hubTab('sports')]));
     }
     var rows = h('div', { cls: 'hrows' });
     page.appendChild(rows);
@@ -1734,7 +2020,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.20.0']
+      ['Versão do app', '1.21.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -2511,6 +2797,7 @@
     if (S.mode === 'detail') { closeDetail(); return; }
     if (S.mode === 'browse') {
       if (S.drawerOpen) { closeDrawer(); return; }
+      if (S.section === 'sports' && S.sp && S.sp.game) { S.sp.game = null; renderSports(); return; }
       if (S.section !== 'home' && !S.offline) {
         var cur = Nav.current();
         if (S.catsEl && S.contentEl && cur && S.contentEl.contains(cur)) {
