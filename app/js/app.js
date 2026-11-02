@@ -2045,7 +2045,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.21.1']
+      ['Versão do app', '1.21.2']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
