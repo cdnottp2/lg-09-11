@@ -21,6 +21,7 @@
     { id: 'eng.1', name: 'Premier League', short: 'Premier League', all: true },
     { id: 'esp.1', name: 'La Liga', short: 'La Liga', all: true },
     { id: 'fra.1', name: 'Ligue 1', short: 'Ligue 1', all: true },
+    { id: 'ita.1', name: 'Campeonato Italiano (Serie A)', short: 'Serie A', all: true },
     { id: 'fifa.friendly', name: 'Amistosos de seleções', short: 'Amistosos', all: false, nat: true },
     { id: 'fifa.worldq.conmebol', name: 'Eliminatórias Sul-Americanas', short: 'Eliminatórias', all: true, nat: true },
     { id: 'conmebol.america', name: 'Copa América', short: 'Copa América', all: true, nat: true },
