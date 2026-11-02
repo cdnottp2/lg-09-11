@@ -752,3 +752,13 @@ body.portrait .spmid .spst { font-size: 15px; }
 body.portrait .spnote, body.portrait .spempty { font-size: 16px; }
 body.portrait .spgoals, body.portrait .spstat { font-size: 16px; }
 body.portrait .spplay small { display: none; }
+
+/* fileira de jogos na Início */
+.sphome.hidden { display: none; }
+.hlist .spcard { flex: none; width: 400px; margin: 0 22px 14px 0; }
+.hlist .spcard.spall { display: inline-flex; height: 140px; flex-direction: column; justify-content: center; align-items: center; width: 220px; font-size: 24px; font-weight: 700; color: #3ab4e0; text-align: center; }
+.hlist .spcard.spall .ico { margin-top: 10px; display: flex; }
+body.compact .hlist .spcard { width: 300px; }
+body.compact .hlist .spcard.spall { width: 160px; font-size: 18px; }
+body.portrait .hlist .spcard { width: 250px; margin: 0 10px 8px 0; }
+body.portrait .hlist .spcard.spall { width: 120px; font-size: 14px; }

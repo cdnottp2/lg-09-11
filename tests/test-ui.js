@@ -91,6 +91,7 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
         return Promise.resolve(JSON.stringify({ current: { temperature_2m: 24.4, apparent_temperature: 25, weather_code: 2, is_day: 1 },
           daily: { temperature_2m_min: [17.2], temperature_2m_max: [28.6] } }));
       });
+      w.Sports.setBase(base + '/espn');   // placares simulados (a Início já pede os jogos de hoje)
       var inputs = $$('.login input');
       assert.strictEqual(inputs.length, 3);
       inputs[0].value = base; inputs[1].value = 'joao'; inputs[2].value = 'errada';
@@ -429,7 +430,14 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       w.Sports.setBase(base + '/espn');
       go('home');
       assert.ok($('[data-sec="sports"]'), 'Esportes aparece na Início');
-      go('sports');
+      return waitFor(function () { return $('.sphome .spcard'); }, 'jogos na Início');
+    }).then(function () {
+      var hx = $('.sphome').textContent;
+      assert.ok(/jogos de hoje/.test(hx) && /Palmeiras/.test(hx) && /Flamengo/.test(hx) && !/Brazil/.test(hx), 'fileira de jogos na Início (sem jogos de outros dias): ' + hx.slice(0, 120));
+      assert.ok($$('.sphome .spcard')[0].classList.contains('live'), 'jogo ao vivo vem primeiro');
+      $$('.sphome .spcard')[0].click();
+      assert.ok($('.spscoreboard') && /Raphael Veiga/.test($('.sports').textContent), 'toque no jogo da Início abre o jogo');
+      key(27);
       return waitFor(function () { return $$('.spcard').length >= 1; }, 'placares');
     }).then(function () {
       var txt = $('.sports').textContent;

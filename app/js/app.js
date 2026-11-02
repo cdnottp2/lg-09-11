@@ -729,8 +729,8 @@
     var sp = S.sp, token = S.loadToken, now = Date.now(), chain = Promise.resolve(), any = false;
     offs.forEach(function (o) {
       var k = Sports.ymd(spDay(o)), c = sp.days[k], ttl = o === 0 ? 40000 : 600000;
-      if (sp.pend[k] || (c && !(force && o === 0) && now - c.at < ttl)) { return; }
-      sp.pend[k] = true;
+      if ((sp.pend[k] && now - sp.pend[k] < 25000) || (c && !(force && o === 0) && now - c.at < ttl)) { return; }
+      sp.pend[k] = now;
       any = true;
       chain = chain.then(function () {
         if (token !== S.loadToken) { delete sp.pend[k]; return null; }
@@ -821,13 +821,13 @@
       ]);
     }
     var st = Sports.statusText(g);
-    if (o.date && g.state === 'pre') { st = SP_WD[new Date(g.start).getDay()] + ' ' + st; }
+    if (o.date && g.state === 'pre' && Sports.dayKey(g.start) !== Sports.ymd(new Date())) { st = SP_WD[new Date(g.start).getDay()] + ' ' + st; }
     var ch = null;
     if (hits.length) {
       ch = h('div', { cls: 'spch' }, [icon('live', 18), h('span', { text: hits[0].ch.name + (hits.length > 1 ? '  +' + (hits.length - 1) : '') })]);
     }
     return h('button', { cls: 'f spcard' + (live ? ' live' : ''), type: 'button', 'data-k': 'g:' + spGame(g), on: { click: function () {
-      if (o.play && hits.length) { spPlay(g, 0); } else { S.sp.game = g; renderSports(); }
+      if (o.play && hits.length) { spPlay(g, 0); } else { S.sp.game = g; if (S.section === 'sports') { renderSports(); } else { selectSection('sports'); } }
     } } }, [
       h('div', { cls: 'sptop' }, [h('div', { cls: 'splg', text: g.leagueName }), h('div', { cls: 'spst' + (live ? ' live' : (g.state === 'post' ? ' done' : '')), text: st })]),
       trow(g.home), trow(g.away), ch
@@ -948,8 +948,35 @@
     })));
   }
 
-  function renderSports() {
+  function spInit() {
     if (!S.sp) { S.sp = { tab: 'scores', day: 0, games: [], failed: [], days: {}, pend: {}, chan: {}, chanAt: 0, game: null, ok: null }; }
+  }
+
+  /* fileira da Início: jogos ao vivo e os das próximas horas (por horário); o que já acabou sai da lista */
+  function spHomeFill(host) {
+    spInit();
+    var sp = S.sp, tk = S.homeToken;
+    function paint() {
+      if (!document.body.contains(host) || tk !== S.homeToken) { return; }
+      var now = Date.now(), fol = spFollow();
+      var l = sp.games.filter(function (g) {
+        if (!Sports.visible(g, fol)) { return false; }
+        return g.state === 'in' || (g.state === 'pre' && g.start > now - 3 * 3600000 && g.start - now < 18 * 3600000);
+      }).sort(spOrder).slice(0, 12);
+      host.innerHTML = '';
+      if (!l.length) { host.classList.add('hidden'); host.classList.remove('hrow'); return; }
+      host.classList.remove('hidden');
+      host.classList.add('hrow');
+      var all = h('button', { cls: 'f spcard spall', type: 'button', on: { click: function () { selectSection('sports'); } } }, [h('div', { text: 'Ver todos os jogos' }), icon('sports', 44)]);
+      host.appendChild(h('div', { cls: 'hrow-title', text: 'Esportes · jogos de hoje' }));
+      host.appendChild(h('div', { cls: 'hlist scroll' }, l.map(function (g) { return spCard(g, { date: true }); }).concat([all])));
+    }
+    paint();
+    spEnsure([0], false).then(paint);
+  }
+
+  function renderSports() {
+    spInit();
     var page = S.pageEl;
     page.className = 'page scroll sports';
     page.innerHTML = '';
@@ -1698,6 +1725,9 @@
 
     var conts = contList().slice(0, 12);
     if (conts.length) { rows.appendChild(makeRow('Continuar assistindo', conts.map(contCard))); }
+    var spHost = h('div', { cls: 'sphome hidden' });
+    rows.appendChild(spHost);
+    spHomeFill(spHost);
     var favs = favList();
     if (favs.length) {
       rows.appendChild(makeRow('Favoritos', favs.slice(0, 20).map(function (it) { return posterCard(it, favs); }).concat([seeAllCard(favs.length)])));
@@ -2045,7 +2075,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.21.2']
+      ['Versão do app', '1.22.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
