@@ -155,6 +155,9 @@ listen(api).then(function () {
     touch('touchstart', 20, 40); touch('touchmove', 20, 30); touch('touchmove', 20, 20); touch('touchend');
     assert.ok(gest.bri.length >= 1 && gest.bri[gest.bri.length - 1] > 0.5 && gest.vol.length === 0, 'esquerda para cima aumenta o brilho');
     assert.ok(/Brilho/.test($('#gest').textContent), 'mostra o indicador de brilho');
+    touch('touchstart', 20, 5); touch('touchmove', 20, 20); touch('touchmove', 20, 45); touch('touchend');
+    assert.strictEqual(gest.bri[gest.bri.length - 1], -1, 'brilho no mínimo volta ao automático');
+    assert.ok(/autom/.test($('#gest').textContent), 'indicador mostra "automático"');
     touch('touchstart', 80, 10); touch('touchmove', 80, 25); touch('touchmove', 80, 40); touch('touchend');
     assert.ok(gest.vol.length >= 1 && gest.vol[gest.vol.length - 1] < 0.5, 'direita para baixo diminui o volume');
     touch('touchstart', 50, 25); touch('touchmove', 60, 25); touch('touchmove', 80, 25); touch('touchend');

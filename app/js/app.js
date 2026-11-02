@@ -1219,8 +1219,14 @@
         return;
       }
       var v = clamp(st.start - dy / (st.h * 0.7), 0, 1);
+      // brilho no mínimo = automático (volta ao brilho do sistema), como no YouTube modificado
+      if (st.kind === 'bri' && v < 0.03) {
+        try { nat().setBrightness(-1); } catch (err0) {}
+        show('Brilho', 0, 'automático');
+        return;
+      }
       try {
-        if (st.kind === 'bri') { nat().setBrightness(Math.max(0.02, v)); } else { nat().setVolume(v); }
+        if (st.kind === 'bri') { nat().setBrightness(Math.max(0.03, v)); } else { nat().setVolume(v); }
       } catch (err) {}
       show(st.kind === 'bri' ? 'Brilho' : 'Volume', v, Math.round(v * 100) + '%');
     }, { passive: false });
@@ -1728,7 +1734,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.19.0']
+      ['Versão do app', '1.20.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
