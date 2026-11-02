@@ -3,7 +3,7 @@
 App web (HTML/JS) com **TV ao vivo, filmes e séries**, navegação por controle remoto (D-pad e Magic Remote).
 
 ## Login
-Servidor, usuário e senha (Xtream Codes). Se algo der errado, os campos continuam preenchidos para você só corrigir o que errou.
+Servidor, usuário e senha (Xtream Codes). **http ou https:** se o endereço digitado não conectar, o app tenta sozinho o outro (http↔https, ou https quando você digita sem prefixo) e guarda o que funcionou, avisando "Servidor ajustado". Usuário/senha errados não disparam essa segunda tentativa. Se algo der errado, os campos continuam preenchidos para você só corrigir o que errou.
 
 ## Telas
 - **Início (estilo Netflix):** no topo, o botão de **três traços** à esquerda, o nome **Master IPTV** no centro e o **perfil** à direita. Logo abaixo, as abas **TV ao vivo**, **Filmes** e **Séries**, e depois as fileiras Continuar assistindo, **Favoritos** (só aparece se você favoritou algo; o último item, "Ver todos", abre a lista completa), Canais recentes e recomendações.

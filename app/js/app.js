@@ -1060,22 +1060,46 @@
     Nav.focus(first);
   }
 
+  /* http x https: se o endereço digitado não conecta, o app testa sozinho o outro e guarda o que funcionou */
+  function altServer(server) {
+    var v = String(server || '').replace(/^\s+|\s+$/g, '');
+    if (/^https:\/\//i.test(v)) { return v.replace(/^https:\/\//i, 'http://'); }
+    if (/^http:\/\//i.test(v)) { return v.replace(/^http:\/\//i, 'https://'); }
+    return 'https://' + v;   // sem prefixo o app assumia http; a alternativa é https
+  }
+
+  function tryLogin(cfg) {
+    var p;
+    try { p = Promise.resolve(Core.createXtream(cfg, http)); } catch (e) { p = Promise.reject(e); }
+    return p.then(function (prov) {
+      return prov.login().then(function (info) { return { prov: prov, info: info, cfg: cfg }; });
+    });
+  }
+
+  function loginAuto(cfg) {
+    return tryLogin(cfg).then(null, function (e) {
+      // usuário/senha errados não caem aqui (o servidor respondeu); só falha de rede, TLS ou resposta que não é do painel
+      var alt = {};
+      for (var k in cfg) { if (cfg.hasOwnProperty(k)) { alt[k] = cfg[k]; } }
+      alt.server = altServer(cfg.server);
+      if (!alt.server || alt.server === cfg.server) { throw e; }
+      return tryLogin(alt).then(function (r) { r.switched = true; return r; }, function () { throw e; });
+    });
+  }
+
   function connect(cfg, o) {
     // guarda o que foi digitado: se falhar, o login volta preenchido para editar
     S.draft = cfg;
     store.set('draft', cfg);
     loading(true, 'Conectando…');
-    var p;
-    try { p = Promise.resolve(Core.createXtream(cfg, http)); } catch (e) { p = Promise.reject(e); }
-
-    p.then(function (prov) {
-      return prov.login().then(function (info) { return { prov: prov, info: info }; });
-    }).then(function (r) {
+    loginAuto(cfg).then(function (r) {
       if (!r.info.ok) { throw new Error('Usuário ou senha inválidos (ou conta inativa).'); }
+      cfg = r.cfg;
       S.provider = r.prov; S.info = r.info;
       S.offline = false;
       S.cfg = cfg;
       store.set('cfg', cfg);
+      if (r.switched) { toast('Servidor ajustado para ' + cfg.server, 4000); }
       loading(false);
       epgCache = {};
       showBrowse();
@@ -2075,7 +2099,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.22.1']
+      ['Versão do app', '1.23.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {

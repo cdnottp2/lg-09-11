@@ -523,6 +523,15 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       assert.strictEqual($$('.login .btn').length, 1, 'login sem modo demonstração');
       assert.ok(/MASTER IPTV/.test($('.login .logo').textContent));
       step('logout volta ao login (sem demonstração, nome Master IPTV)');
+      // http x https: o servidor de teste só fala http; digitar https:// deve cair sozinho em http:// e guardar o que funcionou
+      $$('.login input')[0].value = base.replace('http://', 'https://');
+      $$('.login input')[2].value = 'segredo';
+      $('.btn.primary').click();
+      return waitFor(function () { return $('.hubtab, .hubtile'); }, 'login com https digitado');
+    }).then(function () {
+      assert.strictEqual(JSON.parse(w.localStorage.getItem('iptv.cfg')).server, base, 'guardou o endereço que funcionou (http)');
+      assert.ok(/Servidor ajustado/.test($('#toast').textContent), 'avisa que ajustou o endereço');
+      step('login: https digitado, servidor só http -> ajusta sozinho');
       assert.deepStrictEqual(errors, [], 'erros de script: ' + errors.join(' | '));
       console.log('UI ok');
     });
