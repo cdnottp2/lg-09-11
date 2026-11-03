@@ -346,8 +346,8 @@
         });
       },
       hasEpg: true,
-      epg: function (item) {
-        return api('get_short_epg', { stream_id: item.id, limit: 3 }).then(function (d) {
+      epg: function (item, limit) {
+        return api('get_short_epg', { stream_id: item.id, limit: limit || 3 }).then(function (d) {
           return toList(d && d.epg_listings).map(function (e) {
             return {
               title: C.b64utf8(e.title),

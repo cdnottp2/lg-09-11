@@ -779,7 +779,7 @@
               var c = spEpg[ch.id];
               if (c && Date.now() - c.at < 300000) { progs[ch.id] = c.list; return; }
               busy++;
-              S.provider.epg(ch).then(function (list) { return list; }, function () { return []; }).then(function (list) {
+              S.provider.epg(ch, 12).then(function (list) { return list; }, function () { return []; }).then(function (list) {
                 spEpg[ch.id] = { at: Date.now(), list: list };
                 progs[ch.id] = list;
                 busy--;
@@ -2122,7 +2122,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.24.3']
+      ['Versão do app', '1.25.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
