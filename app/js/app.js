@@ -2122,7 +2122,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.24.2']
+      ['Versão do app', '1.24.3']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -2682,6 +2682,7 @@
       btn('prevep', 'skipprev', 'ep-only'), oPlay, btn('nextep', 'skipnext', 'ep-only')
     ]));
     osd.addEventListener('click', function (e) {
+      e.stopPropagation();   // o mesmo toque não pode chegar ao #player e ampliar o mini player recém-criado
       var b = e.target, c = S.ctx;
       while (b && b !== osd && !b.getAttribute('data-act')) { b = b.parentNode; }
       if (!c) { return; }
@@ -2815,6 +2816,7 @@
 
   function minimizePlayer() {
     if (!S.ctx) { return; }
+    S.miniAt = Date.now();
     leavePlayer(true);
     toast('Mini player — ' + (document.body.classList.contains('touch') ? 'toque nele para ampliar' : 'Amarelo: ampliar · Azul: fechar'), 2500);
   }
@@ -3079,7 +3081,7 @@
     $('player').appendChild(miniX);
     miniX.addEventListener('click', function (e) { e.stopPropagation(); closePlayer(); });
     miniO.addEventListener('click', function (e) { e.stopPropagation(); expandPlayer(); });
-    $('player').addEventListener('click', function () { if (S.mini) { expandPlayer(); } });
+    $('player').addEventListener('click', function () { if (S.mini && Date.now() - (S.miniAt || 0) > 700) { expandPlayer(); } });
     $('osd-tracks').addEventListener('click', function (e) { e.stopPropagation(); openTracks(); });
     $('osd-tracks').insertBefore(icon('cc', 30), $('osd-tracks').firstChild);
     $('osd-prevep').insertBefore(icon('skipprev', 28), $('osd-prevep').firstChild);
