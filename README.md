@@ -85,3 +85,7 @@ Lembre de subir `version` em `app/appinfo.json` antes de cada etiqueta.
 ## Tocar com a tela bloqueada (Android, celular)
 
 Em **Configurações → Continuar tocando com a tela bloqueada** (ligado por padrão). Com a opção ligada, o áudio segue tocando ao bloquear o celular ou sair do app: um serviço em primeiro plano (`PlaybackService`) mantém o app vivo, com uma notificação "Tocando em segundo plano", e só existe enquanto há reprodução. Pausar ou parar o conteúdo remove a notificação. Em Home com vídeo tocando continua valendo o Picture-in-Picture. Na TV nada muda.
+
+## Esportes: onde assistir
+
+Cada jogo mostra, além do botão do canal (quando a programação do seu servidor traz o jogo), uma linha **Onde: ...** com quem transmite no Brasil e, na tela do jogo, a lista completa. É uma tabela fixa por campeonato em `app/js/sports.js` (`RIGHTS`, `LIBRA`, `FFU`), conferida na imprensa em nov/2026: os direitos mudam por temporada e, em alguns torneios, por jogo. Serviços sem guia (HBO Max, Paramount+, Prime Video, YouTube) aparecem só como informação.

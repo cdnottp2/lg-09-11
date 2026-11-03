@@ -775,3 +775,10 @@ body.portrait .hlist .spcard.spall { width: 120px; font-size: 14px; }
 .omb span { vertical-align: middle; }
 #osd-ctl .ep-only { display: none; }
 #osd.hasep #osd-ctl .ep-only { display: flex; }
+
+/* esportes: onde assistir (fontes sem guia) */
+.spwh { margin-top: 8px; font-size: 18px; color: #9fb0c8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spwhlist { margin: 0 0 18px; }
+.spwhrow { padding: 10px 16px; margin-bottom: 8px; border-radius: 12px; background: rgba(255,255,255,.06); font-size: 22px; }
+body.compact .spwh { font-size: 14px; margin-top: 6px; }
+body.compact .spwhrow { font-size: 16px; padding: 8px 12px; }

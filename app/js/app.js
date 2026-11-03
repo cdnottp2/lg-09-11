@@ -866,6 +866,7 @@
     }
     var st = Sports.statusText(g);
     if (o.date && g.state === 'pre' && Sports.dayKey(g.start) !== Sports.ymd(new Date())) { st = SP_WD[new Date(g.start).getDay()] + ' ' + st; }
+    var wr = g.state === 'post' ? null : Sports.whereToWatch(g), wh = wr ? h('div', { cls: 'spwh' }, [h('span', { text: 'Onde: ' + wr.short })]) : null;
     var ch = null;
     if (hits.length) {
       ch = h('div', { cls: 'spch' }, [icon('live', 18), h('span', { text: hits[0].ch.name + (hits.length > 1 ? '  +' + (hits.length - 1) : '') })]);
@@ -874,7 +875,7 @@
       if (o.play && hits.length) { spPlay(g, 0); } else { S.sp.game = g; S.sp.autoFocus = true; S.sp.autoKey = null; if (S.section === 'sports') { renderSports(); } else { selectSection('sports'); } }
     } } }, [
       h('div', { cls: 'sptop' }, [h('div', { cls: 'splg', text: g.leagueName }), h('div', { cls: 'spst' + (live ? ' live' : (g.state === 'post' ? ' done' : '')), text: st })]),
-      trow(g.home), trow(g.away), ch
+      trow(g.home), trow(g.away), ch, wh
     ]);
   }
 
@@ -984,6 +985,13 @@
       })));
     } else {
       body.appendChild(h('div', { cls: 'spnote small', text: !S.provider || !S.provider.hasEpg ? 'Este servidor não tem guia de programação.' : (sp.scanning ? 'Procurando nos seus canais…' : 'Nenhum dos seus canais parece passar este jogo agora (ou o provedor escreve os nomes de outro jeito).') }));
+    }
+    var wr = Sports.whereToWatch(g);
+    if (wr) {
+      body.appendChild(h('div', { cls: 'sptitle', text: 'Onde assistir (outras fontes)' }));
+      body.appendChild(h('div', { cls: 'spwhlist' }, wr.lines.map(function (l) { return h('div', { cls: 'spwhrow', text: l }); }).concat([
+        h('div', { cls: 'spnote small', text: 'Serviços como HBO Max, Paramount+, Prime Video e YouTube não têm guia de programação no seu servidor, por isso não viram botão de canal. Direitos conforme a imprensa (nov/2026); podem variar por jogo.' })
+      ])));
     }
     body.appendChild(h('div', { cls: 'spwatch' }, [g.home, g.away].map(function (t) {
       var on = !!fol[t.id];
@@ -2164,7 +2172,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.26.0']
+      ['Versão do app', '1.26.1']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {

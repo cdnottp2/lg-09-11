@@ -203,6 +203,37 @@
     return hhmm(g.start);
   };
 
+  /* ---------- onde assistir (direitos no Brasil; serviços sem guia de programação, como HBO Max e YouTube) ---------- */
+  /* Tabela fixa, conferida na imprensa em nov/2026. Os direitos mudam por temporada e, em alguns torneios, por jogo. */
+  var RIGHTS = {
+    'uefa.champions': { short: 'HBO Max · TNT · SBT', lines: ['HBO Max — todos os jogos', 'TNT e Space (TV paga) — jogos selecionados', 'TNT Sports no YouTube — jogos selecionados', 'SBT (TV aberta) — 1 jogo por semana, nas terças'] },
+    'conmebol.libertadores': { short: 'ESPN · Paramount+ · Globo', lines: ['ESPN e Disney+ — 8 jogos por rodada', 'Paramount+ — 8 jogos por rodada', 'Globo (TV aberta) — 1 jogo por rodada (times como Flamengo, Fluminense, Corinthians e Palmeiras)'] },
+    'conmebol.sudamericana': { short: 'ESPN · Paramount+ · SBT', lines: ['ESPN e Disney+ — 8 jogos por rodada', 'Paramount+ — 8 jogos por rodada', 'SBT (TV aberta) — 1 jogo por rodada (São Paulo e Santos)'] },
+    'eng.1': { short: 'CazéTV', lines: ['CazéTV (YouTube, grátis) — 1 jogo por rodada'] },
+    'esp.1': { short: 'CazéTV', lines: ['CazéTV (YouTube, grátis) — todos os jogos'] },
+    'fra.1': { short: 'CazéTV · Xsports', lines: ['CazéTV (YouTube, grátis)', 'Xsports (TV aberta) — 3 jogos por rodada'] },
+    'ita.1': { short: 'SportyNet', lines: ['SportyNet (YouTube, aberto)'] }
+  };
+  var LIBRA = ['atletico mg', 'atletico mineiro', 'bahia', 'gremio', 'flamengo', 'palmeiras', 'bragantino', 'remo', 'santos', 'sao paulo', 'vitoria'];
+  var FFU = ['botafogo', 'chapecoense', 'corinthians', 'coritiba', 'cruzeiro', 'fluminense', 'internacional', 'mirassol', 'vasco'];
+  function teamIn(list, name) {
+    var n = ' ' + Sp.norm(name) + ' ';
+    return list.some(function (k) { return n.indexOf(' ' + k) >= 0; });
+  }
+  /* devolve { short, lines } ou null quando não há informação para a competição */
+  Sp.whereToWatch = function (g) {
+    if (g.league === 'bra.1') {
+      if (teamIn(LIBRA, g.home.name)) {
+        return { short: 'Globo · SporTV · Premiere', lines: ['Globo (TV aberta), SporTV e Premiere — a Globo define onde passa cada jogo', 'ge tv (YouTube) — 1 jogo por rodada', 'Globoplay — acesso aos canais da Globo'] };
+      }
+      if (teamIn(FFU, g.home.name)) {
+        return { short: 'Globo · Premiere · Record · CazéTV · Prime', lines: ['Globo (TV aberta), SporTV e Premiere', 'Record (TV aberta) e CazéTV (YouTube) — 1 jogo por rodada', 'Prime Video — 1 jogo exclusivo por rodada'] };
+      }
+      return { short: 'Globo · Premiere', lines: ['Globo (TV aberta), SporTV e Premiere'] };
+    }
+    return RIGHTS[g.league] || null;
+  };
+
   /* ---------- canais: cruza os jogos com a programação ---------- */
 
   var CAT_RE = /esport|sport|futebol|premiere|libertad|champions|copa|brasileir|conmebol|globo|jogos|combate|dazn|tnt|espn|caz[eé]|fifa|abertos?/i;

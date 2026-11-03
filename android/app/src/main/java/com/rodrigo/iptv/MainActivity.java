@@ -52,7 +52,16 @@ public class MainActivity extends Activity {
                 : android.content.pm.ActivityInfo.SCREEN_ORIENTATION_USER);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        web = new WebView(this);
+        web = new WebView(this) {
+            /** Com a tela bloqueada o sistema avisa que a janela sumiu; ignorar isso mantém a página (e o áudio) ativa. */
+            @Override
+            protected void onWindowVisibilityChanged(int visibility) {
+                if (visibility != View.VISIBLE && !tv && playing && bgPlay) {
+                    return;
+                }
+                super.onWindowVisibilityChanged(visibility);
+            }
+        };
         web.setBackgroundColor(Color.parseColor("#0B101A"));
         setContentView(web);
 
@@ -429,6 +438,10 @@ public class MainActivity extends Activity {
         }
         pipActive = false;
         super.onStop();
+        if (!tv && playing && bgPlay && web != null) {
+            web.onResume();       // tela bloqueada: mantém o WebView ativo para o áudio não parar
+            web.resumeTimers();
+        }
     }
 
     @Override

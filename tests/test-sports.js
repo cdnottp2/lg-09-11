@@ -50,6 +50,12 @@ var late = Sports.assign([live], cand, { '1': [{ title: 'Palmeiras x Grêmio', d
 ok(!late[live.league + ':' + live.id], 'programa de outro horário não vale');
 
 // busca: uma liga que falha não derruba as outras
+// onde assistir (direitos no Brasil)
+ok(/Globo/.test(Sports.whereToWatch(pg).short) && !/Record/.test(Sports.whereToWatch(pg).short), 'Palmeiras (bloco Globo): Globo/SporTV/Premiere');
+ok(/Record/.test(Sports.whereToWatch(g).short) && /Prime/.test(Sports.whereToWatch(g).short), 'Corinthians (FFU): inclui Record, CazéTV e Prime');
+var ucl = Sports.parseEvent(ev('2026-11-04T20:00Z', 'pre', t('1', 'Real Madrid', 'RMA'), t('2', 'Liverpool', 'LIV'), '0', '0'), 'uefa.champions');
+ok(/HBO Max/.test(Sports.whereToWatch(ucl).short) && Sports.whereToWatch(ucl).lines.length >= 3, 'Champions: HBO Max, TNT e SBT');
+ok(Sports.whereToWatch(bra) === null, 'amistoso sem informação não mostra nada');
 var calls = [];
 function fakeHttp(url) {
   calls.push(url);
