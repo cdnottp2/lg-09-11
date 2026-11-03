@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.UiModeManager;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
@@ -35,6 +36,8 @@ public class MainActivity extends Activity {
     private boolean pageReady = false;
     private volatile boolean playing = false;   // há vídeo tocando (informado pela página)
     private boolean pipActive = false;
+    private volatile boolean bgPlay = true;   // opção "continuar tocando com a tela bloqueada"
+    private boolean svcOn = false;
     private Downloads downloads;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
@@ -127,6 +130,14 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void setPlaying(boolean on) {
             playing = on;
+            syncService();
+        }
+
+        /** Opção do usuário: continuar tocando com a tela bloqueada / app em segundo plano (só celular). */
+        @JavascriptInterface
+        public void setBackground(boolean on) {
+            bgPlay = on;
+            syncService();
         }
 
         /* ---- gestos do player: brilho (só desta janela) e volume do aparelho ---- */
@@ -352,6 +363,35 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** Liga o serviço em primeiro plano só enquanto há reprodução e a opção está ligada. */
+    private void syncService() {
+        if (tv) {
+            return;
+        }
+        final boolean want = playing && bgPlay;
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Intent i = new Intent(MainActivity.this, PlaybackService.class);
+                    if (want && !svcOn) {
+                        if (Build.VERSION.SDK_INT >= 26) {
+                            startForegroundService(i);
+                        } else {
+                            startService(i);
+                        }
+                        svcOn = true;
+                    } else if (!want && svcOn) {
+                        stopService(i);
+                        svcOn = false;
+                    }
+                } catch (Throwable t) {
+                    svcOn = false;
+                }
+            }
+        });
+    }
+
     /** Home com vídeo tocando: Picture-in-Picture do sistema (Android 8+). Usa reflexão para compilar também com SDKs antigos. */
     @Override
     protected void onUserLeaveHint() {
@@ -393,8 +433,8 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onPause() {
-        if (pipActive) {
-            super.onPause();   // em PiP o vídeo segue tocando
+        if (pipActive || (!tv && playing && bgPlay)) {
+            super.onPause();   // em PiP, ou com a opção de segundo plano, o vídeo/áudio segue tocando
             return;
         }
         if (web != null) {
@@ -418,6 +458,8 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        try { stopService(new Intent(this, PlaybackService.class)); } catch (Throwable t) { /* ignora */ }
+        svcOn = false;
         if (web != null) {
             web.destroy();
             web = null;

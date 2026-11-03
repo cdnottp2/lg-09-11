@@ -16,10 +16,12 @@ function step(n) { console.log('  ok   ' + n); }
 /* "Android" simulado: o que o DownloadManager faria */
 var dlState = {}, nextId = 41, failQuery = false, removed = [];
 var LOCAL = 'file:///storage/emulated/0/Android/data/com.rodrigo.iptv/files/Movies/';
+var bgCalls = [];
 function makeNative() {
   return {
     isTv: function () { return false; },
     setFullscreen: function () {}, setPlaying: function () {}, exit: function () {},
+    setBackground: function (on) { bgCalls.push(on); },
     dlStart: function (url, file, title, wifi, ua) {
       var id = nextId++;
       dlState[id] = { id: id, url: url, file: file, title: title, wifi: wifi, ua: ua, s: 'running', b: 100, t: 1000, r: 0 };
@@ -114,6 +116,7 @@ listen(api).then(function () {
     assert.ok($('.drawer-dl'), 'menu lateral tem Downloads');
     key(461);
     assert.ok($('.drawer').classList.contains('hidden'));
+    assert.strictEqual(bgCalls[bgCalls.length - 1], true, 'segundo plano já vem ligado no celular');
     step('celular: menu lateral com Downloads');
     $('.hubtab[data-sec="movie"]').click();
     return waitFor(function () { return $$('.card').length === 1; }, 'filmes');

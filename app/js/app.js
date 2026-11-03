@@ -141,7 +141,14 @@
   function initial(it) { return (it.name || '?').charAt(0).toUpperCase(); }
   function metaLine(parts) { return parts.filter(function (x) { return x; }).join('  ·  '); }
   function opt(k) { return !!S.opts[k]; }
-  function setOpt(k, v) { S.opts[k] = !!v; store.set('opts', S.opts); }
+  function setOpt(k, v) { S.opts[k] = !!v; store.set('opts', S.opts); if (k === 'bgplay') { applyBg(); } }
+  /* Android (celular): tocar com a tela bloqueada / app em segundo plano (padrão: ligado) */
+  function hasBg() { try { return !!(window.NativeApp && window.NativeApp.setBackground && !(window.NativeApp.isTv && window.NativeApp.isTv())); } catch (e) { return false; } }
+  function applyBg() {
+    if (!hasBg()) { return; }
+    if (S.opts.bgplay === undefined) { S.opts.bgplay = true; store.set('opts', S.opts); }
+    try { window.NativeApp.setBackground(!!S.opts.bgplay); } catch (e) {}
+  }
 
   // filtro de canais por qualidade no nome (FHD/UHD não são afetados)
   var RE_SD = /(^|[^A-Za-z0-9])SD($|[^A-Za-z0-9])/i, RE_HD = /(^|[^A-Za-z0-9])HD($|[^A-Za-z0-9])/i;
@@ -2157,7 +2164,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.25.1']
+      ['Versão do app', '1.26.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -2184,6 +2191,7 @@
     page.appendChild(h('div', { cls: 'sgroup sub', text: 'Estilo da tela inicial (neste aparelho)' }));
     page.appendChild(homeStyleBlock());
     page.appendChild(switchRow('Reproduzir o último conteúdo ao abrir o app', 'Ao iniciar, retoma o último canal, filme ou episódio assistido.', 'autoplay'));
+    if (hasBg()) { page.appendChild(switchRow('Continuar tocando com a tela bloqueada', 'O áudio segue tocando ao bloquear o celular ou sair do app (aparece uma notificação enquanto toca).', 'bgplay')); }
     page.appendChild(switchRow('Ocultar canais SD', 'Esconde da lista os canais com "SD" no nome.', 'hideSD'));
     page.appendChild(switchRow('Ocultar canais HD', 'Esconde da lista os canais com "HD" no nome (FHD e 4K continuam).', 'hideHD'));
 
@@ -3090,6 +3098,7 @@
     });
 
     document.addEventListener('keydown', onKey, true);
+    applyBg();
     document.addEventListener('visibilitychange', function () { if (!document.hidden) { cloudSoon(800, true); } });
     var fake = function (code) { return { keyCode: code, preventDefault: function () {} }; };
     window.__nativeBack = function () { onKey(fake(KEY.BACK)); };

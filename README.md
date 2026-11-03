@@ -81,3 +81,7 @@ as chamadas de API/lista. O vídeo em si é tocado direto pelo `<video>` da TV
 O repositório precisa ser **público**. Ao criar uma etiqueta (`git tag v1.4.1 && git push origin v1.4.1`), o workflow roda os testes, monta o IPK e cria a Release com `.ipk`, `repo.json`, descrição e ícone (a etiqueta tem de ser `v` + a versão do `appinfo.json`, ex.: versão 1.4.1 → `v1.4.1`). Na TV: Homebrew Channel → Settings → Add repository →
 `https://github.com/SEU_USUARIO/NOME_DO_REPO/releases/latest/download/repo.json`
 Lembre de subir `version` em `app/appinfo.json` antes de cada etiqueta.
+
+## Tocar com a tela bloqueada (Android, celular)
+
+Em **Configurações → Continuar tocando com a tela bloqueada** (ligado por padrão). Com a opção ligada, o áudio segue tocando ao bloquear o celular ou sair do app: um serviço em primeiro plano (`PlaybackService`) mantém o app vivo, com uma notificação "Tocando em segundo plano", e só existe enquanto há reprodução. Pausar ou parar o conteúdo remove a notificação. Em Home com vídeo tocando continua valendo o Picture-in-Picture. Na TV nada muda.
