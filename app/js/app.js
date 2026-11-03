@@ -2122,7 +2122,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.24.1']
+      ['Versão do app', '1.24.2']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -2748,7 +2748,7 @@
 
   function updateEpMenu() {
     var c = S.ctx, ep = c && c.kind === 'ep', pv = ep && c.idx > 0 ? c.eps[c.idx - 1] : null, nx = ep && c.idx + 1 < c.eps.length ? c.eps[c.idx + 1] : null;
-    $('osd').classList.toggle('ep', !!ep);
+    $('osd').classList.toggle('hasep', !!ep);
     $('osd-prevep').classList.toggle('hidden', !pv);
     $('osd-nextep').classList.toggle('hidden', !nx);
     if (pv) { $('osd-prevep').lastChild.textContent = 'Anterior · T' + pv.season + ' E' + pv.num; }

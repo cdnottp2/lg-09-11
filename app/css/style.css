@@ -276,7 +276,11 @@ body.android input { -webkit-user-select: text; user-select: text; }
 
 /* controles de toque no player */
 #osd-ctl { display: none; position: absolute; left: 0; right: 0; top: 36%; justify-content: center; align-items: center; }
-.touch #osd-ctl { display: flex; }
+.touch #osd-ctl { display: flex; top: auto; bottom: 74px; left: auto; right: 60px; }   /* controles ficam embaixo, na linha do título */
+.touch .oc { width: 72px; height: 72px; margin: 0 8px; }
+.touch .oc.big { width: 88px; height: 88px; }
+.touch .oc svg { width: 34px; height: 34px; }
+body.portrait.touch #osd-ctl { right: 16px; bottom: 50px; }
 .oc { position: relative; display: flex; align-items: center; justify-content: center; width: 104px; height: 104px; margin: 0 26px; border-radius: 50%;
   background: rgba(15,22,36,.82); color: #fff; }
 .oc.big { width: 132px; height: 132px; background: #3ab4e0; color: #04202c; }
@@ -770,4 +774,4 @@ body.portrait .hlist .spcard.spall { width: 120px; font-size: 14px; }
 .omb .ico { display: inline-block; vertical-align: middle; }
 .omb span { vertical-align: middle; }
 #osd-ctl .ep-only { display: none; }
-#osd.ep #osd-ctl .ep-only { display: flex; }
+#osd.hasep #osd-ctl .ep-only { display: flex; }
