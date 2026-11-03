@@ -162,6 +162,11 @@ listen(api).then(function () {
     assert.ok(gest.vol.length >= 1 && gest.vol[gest.vol.length - 1] < 0.5, 'direita para baixo diminui o volume');
     touch('touchstart', 50, 25); touch('touchmove', 60, 25); touch('touchmove', 80, 25); touch('touchend');
     assert.strictEqual(vt, 954, 'arrastar de lado avança 54 s: ' + vt);
+    touch('touchstart', 80, 25); touch('touchend'); touch('touchstart', 80, 25); touch('touchend');
+    assert.strictEqual(vt, 964, 'toque duplo na direita avança 10 s: ' + vt);
+    touch('touchstart', 20, 25); touch('touchend'); touch('touchstart', 20, 25); touch('touchend');
+    assert.strictEqual(vt, 954, 'toque duplo na esquerda volta 10 s: ' + vt);
+    assert.ok(!$('#osd-ctl [data-act="rew"]') && !$('#osd-ctl [data-act="ff"]'), 'sem botões de 10 s no meio da tela');
     step('gestos: brilho (esq.), volume (dir.) e avançar/voltar');
     key(413);   // Parar
     assert.ok($('#player').classList.contains('hidden'), 'player fechou');

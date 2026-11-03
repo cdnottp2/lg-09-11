@@ -1602,9 +1602,22 @@
       } catch (err) {}
       show(st.kind === 'bri' ? 'Brilho' : 'Volume', v, Math.round(v * 100) + '%');
     }, { passive: false });
+    var lastTap = null;
     function end() {
       if (st && st.kind === 'seek' && st.tgt !== st.t0) { Player.seekTo(st.tgt); updateBar(st.tgt, Player.duration()); }
       if (st && st.kind) { hideSoon(); }
+      else if (st && S.ctx && S.ctx.kind !== 'live') {
+        // toque duplo na metade esquerda volta 10 s, na direita avança 10 s
+        var now = Date.now();
+        if (lastTap && lastTap.side === st.side && now - lastTap.at < 350) {
+          var d = st.side === 'L' ? -10 : 10;
+          Player.seek(d);
+          updateBar(Player.time(), Player.duration());
+          show((d > 0 ? '+' : '−') + '10 s', null, '');
+          hideSoon();
+          lastTap = null;
+        } else { lastTap = { side: st.side, at: now }; }
+      }
       st = null;
     }
     pl.addEventListener('touchend', end, { passive: true });
@@ -2109,7 +2122,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.24.0']
+      ['Versão do app', '1.24.1']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -2666,7 +2679,7 @@
     osd.appendChild(btn('back', 'back', 'back'));
     osd.appendChild(h('div', { id: 'osd-ctl' }, [
       btn('prev', 'chdn', 'live-only'), btn('next', 'chup', 'live-only'),
-      btn('prevep', 'skipprev', 'ep-only'), btn('rew', 'rew', 'vod-only', '10 s'), oPlay, btn('ff', 'ff', 'vod-only', '10 s'), btn('nextep', 'skipnext', 'ep-only'), btn('tracks', 'cc', '')
+      btn('prevep', 'skipprev', 'ep-only'), oPlay, btn('nextep', 'skipnext', 'ep-only')
     ]));
     osd.addEventListener('click', function (e) {
       var b = e.target, c = S.ctx;
