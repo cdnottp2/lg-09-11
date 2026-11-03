@@ -69,6 +69,8 @@
     check: '<path d="M5 12.5l5 5 9-10.5"/>',
     cc: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10.5 10.3a2.4 2.4 0 1 0 0 3.4M17 10.3a2.4 2.4 0 1 0 0 3.4"/>',
     sports: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5l3.8 2.8-1.4 4.4H9.6l-1.4-4.4zM12 3v4.5M3.6 9.8l4.6.5M20.4 9.8l-4.6.5M7 19.5l1.6-4.8M17 19.5l-1.6-4.8"/>',
+    skipprev: '<path d="M6 5v14M19 5L9 12l10 7z"/>',
+    skipnext: '<path d="M18 5v14M5 5l10 7-10 7z"/>',
     av_smile: '<circle cx="12" cy="12" r="9"/><path d="M8.3 14.3a4.6 4.6 0 0 0 7.4 0M9 9.6v.01M15 9.6v.01"/>',
     av_bolt: '<path d="M13 3L5.5 13.5H11L10 21l8.5-11H13z"/>',
     av_heart: '<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.2 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>',
@@ -827,7 +829,7 @@
       ch = h('div', { cls: 'spch' }, [icon('live', 18), h('span', { text: hits[0].ch.name + (hits.length > 1 ? '  +' + (hits.length - 1) : '') })]);
     }
     return h('button', { cls: 'f spcard' + (live ? ' live' : ''), type: 'button', 'data-k': 'g:' + spGame(g), on: { click: function () {
-      if (o.play && hits.length) { spPlay(g, 0); } else { S.sp.game = g; if (S.section === 'sports') { renderSports(); } else { selectSection('sports'); } }
+      if (o.play && hits.length) { spPlay(g, 0); } else { S.sp.game = g; S.sp.autoFocus = true; S.sp.autoKey = null; if (S.section === 'sports') { renderSports(); } else { selectSection('sports'); } }
     } } }, [
       h('div', { cls: 'sptop' }, [h('div', { cls: 'splg', text: g.leagueName }), h('div', { cls: 'spst' + (live ? ' live' : (g.state === 'post' ? ' done' : '')), text: st })]),
       trow(g.home), trow(g.away), ch
@@ -1016,6 +1018,14 @@
     var el = key ? S.pageEl.querySelector('[data-k="' + key + '"]') : null;
     if (!el && first) { el = S.pageEl.querySelector('.sptab.on') || S.pageEl.querySelector('.sptab'); }
     if (!el && sp.game) { el = body.querySelector('.spplay') || body.querySelector('.f'); }
+    if (sp.game && sp.autoFocus) {
+      // o canal pode aparecer depois (a procura na programação leva um instante): se você ainda não mexeu, o foco vai para ele, pronto para o OK
+      var pl = body.querySelector('.spplay'), ek = el && el.getAttribute('data-k');
+      if (pl) {
+        if (!el || ek === 'back' || ek === sp.autoKey || ek === 'p:0') { el = pl; }
+        sp.autoFocus = false;
+      } else { sp.autoKey = ek; }
+    }
     if (el) { Nav.focus(el); }
     else if (!Nav.current()) { Nav.focus(S.pageEl.querySelector('.sptab') || S.headEl.querySelector('.f')); }
   }
@@ -1551,7 +1561,7 @@
     function hideSoon() { clearTimeout(hideT); hideT = setTimeout(function () { if (hud) { hud.classList.add('hidden'); } }, 700); }
     function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
     function ignore(t) {
-      return !t || !t.closest || t.closest('[data-act], .track, #tracks, #osd-tracks, #mini-x, button');
+      return !t || !t.closest || t.closest('[data-act], .track, #tracks, #osd-menu, #mini-x, button');
     }
     var pl = $('player');
     pl.addEventListener('touchstart', function (e) {
@@ -2099,7 +2109,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.23.0']
+      ['Versão do app', '1.24.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -2502,7 +2512,8 @@
     closeTracks();
     Player.play(url, o);
     setOsd(title, sub, '', logo, vod);
-    if (c.kind === 'ep') { $('osd-hint').textContent += ' · Amarelo: pular introdução'; }
+    if (c.kind === 'ep') { $('osd-hint').textContent += ' · CH+/CH−: próximo/anterior episódio'; }
+    updateEpMenu();
     showOsd();
     if (c.kind === 'live') { loadEpg(c.list[c.idx]); }
   }
@@ -2517,7 +2528,7 @@
     if (logo) { imgEl(logo, l); }
     $('osd-bar').classList.toggle('hidden', !vod);
     $('osd').classList.toggle('vod', !!vod);
-    $('osd-hint').textContent = vod ? 'OK: pausar · ←/→: ±10 s · Cima ou Verde: áudio e legenda · Voltar: mini player · Parar: sair'
+    $('osd-hint').textContent = vod ? 'OK: pausar · ←/→: ±10 s · Cima/Baixo: menu (áudio e legenda) · Voltar: mini player · Parar: sair'
       : 'Cima/Baixo: canal · 0-9: número · Verde: áudio e legenda · Vermelho: favorito';
     $('osd-fill').style.width = '0';
     $('osd-cur').textContent = '0:00';
@@ -2655,7 +2666,7 @@
     osd.appendChild(btn('back', 'back', 'back'));
     osd.appendChild(h('div', { id: 'osd-ctl' }, [
       btn('prev', 'chdn', 'live-only'), btn('next', 'chup', 'live-only'),
-      btn('rew', 'rew', 'vod-only', '10 s'), oPlay, btn('ff', 'ff', 'vod-only', '10 s'), btn('tracks', 'cc', '')
+      btn('prevep', 'skipprev', 'ep-only'), btn('rew', 'rew', 'vod-only', '10 s'), oPlay, btn('ff', 'ff', 'vod-only', '10 s'), btn('nextep', 'skipnext', 'ep-only'), btn('tracks', 'cc', '')
     ]));
     osd.addEventListener('click', function (e) {
       var b = e.target, c = S.ctx;
@@ -2665,6 +2676,8 @@
         var act = b.getAttribute('data-act');
         if (act === 'back') { minimizePlayer(); return; }
         if (act === 'tracks') { openTracks(); return; }
+        if (act === 'prevep') { stepEpisode(-1); return; }
+        if (act === 'nextep') { stepEpisode(1); return; }
         if (act === 'next') { zap(1); return; }
         if (act === 'prev') { zap(-1); return; }
         if (act === 'toggle') { Player.toggle(); }
@@ -2683,9 +2696,51 @@
     });
   }
 
+  /* menu de baixo do player: [Episódio anterior] [Áudio e legenda] [Próximo episódio]; setas ←/→ escolhem, OK ativa */
+  function osdBtns() {
+    return [$('osd-prevep'), $('osd-tracks'), $('osd-nextep')].filter(function (b) { return !b.classList.contains('hidden'); });
+  }
+
   function setOsdMenu(on) {
     S.osdMenu = !!on;
-    $('osd-tracks').classList.toggle('focus', !!on);
+    if (!S.osdSel || S.osdSel.classList.contains('hidden')) { S.osdSel = $('osd-tracks'); }
+    [$('osd-prevep'), $('osd-tracks'), $('osd-nextep')].forEach(function (b) { b.classList.toggle('focus', !!on && b === S.osdSel); });
+  }
+
+  function moveOsdSel(d) {
+    var bs = osdBtns(), i = bs.indexOf(S.osdSel);
+    if (i < 0) { i = bs.indexOf($('osd-tracks')); }
+    S.osdSel = bs[Math.max(0, Math.min(bs.length - 1, i + d))];
+    showOsd(true);
+  }
+
+  function activateOsdSel() {
+    var b = S.osdSel;
+    if (b === $('osd-prevep')) { stepEpisode(-1); }
+    else if (b === $('osd-nextep')) { stepEpisode(1); }
+    else { openTracks(); }
+  }
+
+  /* série: pula para o próximo/anterior episódio (o ponto do atual fica salvo) */
+  function stepEpisode(d) {
+    var c = S.ctx;
+    if (!c || c.kind !== 'ep') { return; }
+    var n = c.idx + d;
+    if (n < 0 || n >= c.eps.length) { toast(d > 0 ? 'Este é o último episódio' : 'Este é o primeiro episódio', 1800); return; }
+    saveResume();
+    c.idx = n;
+    S.osdSel = $('osd-tracks');
+    playCurrent(false);
+  }
+
+  function updateEpMenu() {
+    var c = S.ctx, ep = c && c.kind === 'ep', pv = ep && c.idx > 0 ? c.eps[c.idx - 1] : null, nx = ep && c.idx + 1 < c.eps.length ? c.eps[c.idx + 1] : null;
+    $('osd').classList.toggle('ep', !!ep);
+    $('osd-prevep').classList.toggle('hidden', !pv);
+    $('osd-nextep').classList.toggle('hidden', !nx);
+    if (pv) { $('osd-prevep').lastChild.textContent = 'Anterior · T' + pv.season + ' E' + pv.num; }
+    if (nx) { $('osd-nextep').lastChild.textContent = 'Próximo · T' + nx.season + ' E' + nx.num; }
+    setOsdMenu(S.osdMenu);
   }
 
   function showOsd(menu) {
@@ -2835,19 +2890,27 @@
     switch (k) {
       case KEY.GREEN: openTracks(); break;
       case KEY.UP: case KEY.CHUP:
-        if (live) { zap(1); } else { showOsd(true); }   // cima e baixo abrem o menu com "Áudio e legenda"
+        if (live) { zap(1); }
+        else if (k === KEY.CHUP && c.kind === 'ep') { stepEpisode(1); }
+        else { if (!S.osdMenu) { S.osdSel = $('osd-tracks'); } showOsd(true); }   // cima e baixo abrem o menu de baixo
         break;
       case KEY.DOWN: case KEY.CHDN:
-        if (live) { zap(-1); } else { showOsd(true); }
+        if (live) { zap(-1); }
+        else if (k === KEY.CHDN && c.kind === 'ep') { stepEpisode(-1); }
+        else { if (!S.osdMenu) { S.osdSel = $('osd-tracks'); } showOsd(true); }
         break;
-      case KEY.LEFT: if (live) { showOsd(); } else { seek(-1); } break;
-      case KEY.RIGHT: if (live) { showOsd(); } else { seek(1); } break;
+      case KEY.LEFT:
+        if (live) { showOsd(); } else if (S.osdMenu && !$('osd').classList.contains('hidden')) { moveOsdSel(-1); } else { seek(-1); }
+        break;
+      case KEY.RIGHT:
+        if (live) { showOsd(); } else if (S.osdMenu && !$('osd').classList.contains('hidden')) { moveOsdSel(1); } else { seek(1); }
+        break;
       case KEY.REW: if (!live) { Player.seek(-30); showOsd(); } break;
       case KEY.FF: if (!live) { Player.seek(30); showOsd(); } break;
       case KEY.PLAY: if (Player.isPaused()) { Player.toggle(); } showOsd(); break;
       case KEY.PAUSE: if (!Player.isPaused()) { Player.toggle(); } showOsd(); break;
       case KEY.ENTER:
-        if (S.osdMenu && !$('osd').classList.contains('hidden')) { openTracks(); }   // menu aberto: OK abre áudio e legenda
+        if (S.osdMenu && !$('osd').classList.contains('hidden')) { activateOsdSel(); }   // menu aberto: OK ativa a opção escolhida
         else if (live) { showOsd(true); }
         else { Player.toggle(); showOsd(); }
         break;
@@ -3006,6 +3069,10 @@
     $('player').addEventListener('click', function () { if (S.mini) { expandPlayer(); } });
     $('osd-tracks').addEventListener('click', function (e) { e.stopPropagation(); openTracks(); });
     $('osd-tracks').insertBefore(icon('cc', 30), $('osd-tracks').firstChild);
+    $('osd-prevep').insertBefore(icon('skipprev', 28), $('osd-prevep').firstChild);
+    $('osd-nextep').insertBefore(icon('skipnext', 28), $('osd-nextep').firstChild);
+    $('osd-prevep').addEventListener('click', function (e) { e.stopPropagation(); stepEpisode(-1); });
+    $('osd-nextep').addEventListener('click', function (e) { e.stopPropagation(); stepEpisode(1); });
 
     var cfg = store.get('cfg', null);
     if (cfg && cfg.server) { S.cfg = cfg; connect(cfg, { boot: true }); } else { showLogin(); }

@@ -70,7 +70,7 @@ function create() {
         events = [
           ev('1001', nowMs - 3600000, 'in', "67'", tm('2029', 'Palmeiras', 'PAL'), tm('6273', 'Grêmio', 'GRE'), '2', '1',
             [{ scoringPlay: true, clock: { displayValue: "23'" }, athletesInvolved: [{ displayName: 'Raphael Veiga' }], team: { id: '2029' } }]),
-          ev('1002', nowMs + 20 * 60000, 'pre', '', tm('819', 'Flamengo', 'FLA'), tm('3454', 'Vasco da Gama', 'VAS'), '0', '0')
+          ev('1002', Math.min(nowMs + 20 * 60000, (function () { var d = new Date(); d.setHours(23, 59, 0, 0); return d.getTime(); })()), 'pre', '', tm('819', 'Flamengo', 'FLA'), tm('3454', 'Vasco da Gama', 'VAS'), '0', '0')
         ];
       } else if (lg === 'fifa.friendly') {
         events = [

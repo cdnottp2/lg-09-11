@@ -251,6 +251,27 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       $$('#detail .ep')[0].click();
       assert.ok(/7001\.mp4$/.test($('#video').getAttribute('src')));
       step('séries -> temporadas -> episódio');
+      // episódios: menu de baixo com anterior/próximo, e CH+/CH- (sem botões coloridos)
+      var vsrc = function () { return $('#video').getAttribute('src'); };
+      vt = 0; vd = NaN;   // sem duração: trocar de episódio não grava ponto de "continuar assistindo" neste teste
+      assert.ok($('#osd-prevep').classList.contains('hidden') && !$('#osd-nextep').classList.contains('hidden'), 'primeiro episódio: só "próximo"');
+      assert.ok(/E2/.test($('#osd-nextep').textContent), 'botão diz qual é o próximo: ' + $('#osd-nextep').textContent);
+      $('#osd').classList.add('hidden');
+      key(40);
+      assert.ok($('#osd-tracks').classList.contains('focus'), 'baixo: menu com Áudio e legenda destacado');
+      key(39);
+      assert.ok($('#osd-nextep').classList.contains('focus') && !$('#osd-tracks').classList.contains('focus'), '→ move para "Próximo episódio"');
+      key(13);
+      assert.ok(/7002\.mp4$/.test(vsrc()), 'OK em "Próximo episódio" toca o E2: ' + vsrc());
+      assert.ok(!$('#osd-prevep').classList.contains('hidden') && /E1/.test($('#osd-prevep').textContent), 'agora aparece "Anterior"');
+      key(33);
+      assert.ok(/7101\.mkv$/.test(vsrc()) && $('#osd-nextep').classList.contains('hidden'), 'CH+ avança (T2 E1) e some o "próximo" no último');
+      key(34);
+      key(34);
+      assert.ok(/7001\.mp4$/.test(vsrc()), 'CH- volta: ' + vsrc());
+      key(34);
+      assert.ok(/7001\.mp4$/.test(vsrc()), 'no primeiro não recua');
+      step('séries: próximo/anterior episódio (menu e CH+/CH-)');
       vd = 2700; vt = 10;
       $('#video').dispatchEvent(new w.Event('timeupdate'));
       assert.ok(!$('#skip-intro') && !$('#osd-top #osd-tracks') && !$('.osd-top #osd-tracks'), 'sem "Pular introdução" e sem o botão de áudio no topo');
@@ -282,7 +303,7 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       assert.ok($$('.hrow-title').map(function (e) { return e.textContent; }).indexOf('Canais recentes') >= 0, 'canais recentes');
       step('menu: Continuar assistindo (progresso) + canais recentes');
       $('.lcard').click(); // Continuar
-      assert.ok(/501\.mkv$/.test($('#video').getAttribute('src')));
+      assert.ok(/501\.mkv$/.test($('#video').getAttribute('src')), 'src: ' + $('#video').getAttribute('src') + ' | ' + $('.lcard').textContent);
       vt = 0; vd = NaN;
       key(27);
       go('live'); // a lupa saiu da home: a busca agora fica dentro de cada seção
@@ -437,6 +458,9 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       assert.ok($$('.sphome .spcard')[0].classList.contains('live'), 'jogo ao vivo vem primeiro');
       $$('.sphome .spcard')[0].click();
       assert.ok($('.spscoreboard') && /Raphael Veiga/.test($('.sports').textContent), 'toque no jogo da Início abre o jogo');
+      // o canal é procurado na programação depois de abrir: quando aparece, o foco já fica nele (só dar OK)
+      return waitFor(function () { return $('.spplay') && w.Nav.current() === $('.spplay'); }, 'foco no botão do canal');
+    }).then(function () {
       key(27);
       return waitFor(function () { return $$('.spcard').length >= 1; }, 'placares');
     }).then(function () {

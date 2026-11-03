@@ -35,7 +35,8 @@ Configurações → **Sincronização** mantém *continuar assistindo*, favorito
 ## Controles
 | Tecla | Ao vivo | Filmes/séries |
 |---|---|---|
-| ▲ ▼ / CH+ CH- | trocar canal | ▲ ou ▼ abre o menu de baixo (com *Áudio e legenda*) |
+| ▲ ▼ | trocar canal | abre o menu de baixo: **Episódio anterior · Áudio e legenda · Próximo episódio** (◀ ▶ escolhem, OK ativa) |
+| CH+ CH- | trocar canal | séries: próximo / anterior episódio |
 | 0–9 | ir ao canal pelo número | – |
 | ◀ ▶ | mostra barra | ±10 s (acelera segurando) |
 | OK | mostra barra | pausar/continuar |
