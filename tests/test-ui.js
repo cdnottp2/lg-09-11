@@ -546,6 +546,7 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       assert.strictEqual($$('.login input')[1].value, 'joao', 'logout mantém usuário');
       assert.strictEqual($$('.login .btn').length, 1, 'login sem modo demonstração');
       assert.ok(/MASTER IPTV/.test($('.login .logo').textContent));
+
       step('logout volta ao login (sem demonstração, nome Master IPTV)');
       // http x https: o servidor de teste só fala http; digitar https:// deve cair sozinho em http:// e guardar o que funcionou
       $$('.login input')[0].value = base.replace('http://', 'https://');
@@ -556,6 +557,12 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       assert.strictEqual(JSON.parse(w.localStorage.getItem('iptv.cfg')).server, base, 'guardou o endereço que funcionou (http)');
       assert.ok(/Servidor ajustado/.test($('#toast').textContent), 'avisa que ajustou o endereço');
       step('login: https digitado, servidor só http -> ajusta sozinho');
+      return waitFor(function () {
+        var c = JSON.parse(w.localStorage.getItem('iptv.spcache') || 'null');
+        return c && Object.keys(c.days).length && Object.keys(c.chan).length && Object.keys(c.epg).length;
+      }, 'jogos, canais e programação guardados no aparelho');
+    }).then(function () {
+      step('esportes: cache no aparelho (jogos, canais, programação)');
       assert.deepStrictEqual(errors, [], 'erros de script: ' + errors.join(' | '));
       console.log('UI ok');
     });

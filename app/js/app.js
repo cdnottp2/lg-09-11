@@ -709,6 +709,41 @@
   function spGame(g) { return g.league + ':' + g.id; }
   var spEpg = {};
 
+  /* guarda no aparelho jogos, canais encontrados e programação, para não procurar tudo de novo ao abrir o app */
+  function spCacheId() { return S.cfg && S.cfg.server ? (S.cfg.server.replace(/^https?:\/\//i, '').replace(/\/.*$/, '') + '|' + (S.cfg.user || '')) : ''; }
+  var spSaveT = null;
+  function spPersist() {
+    clearTimeout(spSaveT);
+    spSaveT = setTimeout(function () {
+      var sp = S.sp, id = spCacheId();
+      if (!sp || !id) { return; }
+      var epg = {}, now = Date.now();
+      Object.keys(spEpg).forEach(function (k) {
+        var c = spEpg[k];
+        if (now - c.at > 6 * 3600000) { return; }
+        epg[k] = { at: c.at, list: c.list.map(function (e) { return { title: e.title, desc: (e.desc || '').slice(0, 140), start: e.start, stop: e.stop }; }) };
+      });
+      store.set('spcache', { id: id, days: sp.days, chan: sp.chan, chanAt: sp.chanAt, epg: epg });
+    }, 800);
+  }
+  function spLoadCache(sp) {
+    var c = store.get('spcache', null), id = spCacheId(), now = Date.now(), y = Sports.ymd(spDay(-1));
+    if (!c || !id || c.id !== id) { return; }
+    Object.keys(c.days || {}).forEach(function (k) { if (k >= y) { sp.days[k] = c.days[k]; } });
+    sp.chan = c.chan || {};
+    sp.chanAt = c.chanAt || 0;
+    Object.keys(c.epg || {}).forEach(function (k) { if (now - c.epg[k].at < 6 * 3600000) { spEpg[k] = c.epg[k]; } });
+    if (Object.keys(sp.days).length) { sp.ok = true; spMerge(); }
+  }
+  /* a programação guardada vale enquanto cobrir as próximas horas (assim não consulta de novo canal por canal) */
+  function spEpgFresh(c) {
+    if (!c) { return false; }
+    var age = Date.now() - c.at;
+    if (age < 300000) { return true; }
+    var last = c.list.length ? c.list[c.list.length - 1].stop : 0;
+    return age < 3 * 3600000 && last > Date.now() + 2 * 3600000;
+  }
+
   /* a fonte só entrega um dia por consulta: guarda cada dia (hoje renova rápido, os outros devagar) e junta tudo */
   function spNeeded() {
     var sp = S.sp, out = [0], i;
@@ -740,7 +775,7 @@
           delete sp.pend[k];
           sp.tried = true;
           sp.failed = r.failed;
-          if (r.failed.length < Sports.LEAGUES.length) { sp.days[k] = { at: Date.now(), games: r.games }; sp.ok = true; spMerge(); }
+          if (r.failed.length < Sports.LEAGUES.length) { sp.days[k] = { at: Date.now(), games: r.games }; sp.ok = true; spMerge(); spPersist(); }
           else if (!sp.ok) { sp.ok = false; }
           if (token === S.loadToken && S.section === 'sports') { paintSports(); }
         });
@@ -777,7 +812,7 @@
           while (busy < 4 && i < cands.length) {
             (function (ch) {
               var c = spEpg[ch.id];
-              if (c && Date.now() - c.at < 300000) { progs[ch.id] = c.list; return; }
+              if (spEpgFresh(c)) { progs[ch.id] = c.list; return; }
               busy++;
               S.provider.epg(ch, 12).then(function (list) { return list; }, function () { return []; }).then(function (list) {
                 spEpg[ch.id] = { at: Date.now(), list: list };
@@ -793,7 +828,7 @@
       });
     }).then(function (res) {
       sp.scanning = false;
-      if (res) { sp.chan = res; sp.chanAt = Date.now(); }
+      if (res) { sp.chan = res; sp.chanAt = Date.now(); spPersist(); }
       if (token === S.loadToken && S.section === 'sports') { paintSports(); }
     }, function () { sp.scanning = false; sp.chanAt = Date.now(); });
   }
@@ -951,7 +986,7 @@
   }
 
   function spInit() {
-    if (!S.sp) { S.sp = { tab: 'scores', day: 0, games: [], failed: [], days: {}, pend: {}, chan: {}, chanAt: 0, game: null, ok: null }; }
+    if (!S.sp) { S.sp = { tab: 'scores', day: 0, games: [], failed: [], days: {}, pend: {}, chan: {}, chanAt: 0, game: null, ok: null }; spLoadCache(S.sp); }
   }
 
   /* fileira da Início: jogos ao vivo e os das próximas horas (por horário); o que já acabou sai da lista */
@@ -2122,7 +2157,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.25.0']
+      ['Versão do app', '1.25.1']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
