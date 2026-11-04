@@ -782,3 +782,4 @@ body.portrait .hlist .spcard.spall { width: 120px; font-size: 14px; }
 .spwhrow { padding: 10px 16px; margin-bottom: 8px; border-radius: 12px; background: rgba(255,255,255,.06); font-size: 22px; }
 body.compact .spwh { font-size: 14px; margin-top: 6px; }
 body.compact .spwhrow { font-size: 16px; padding: 8px 12px; }
+.spch.guess { opacity: .8; font-style: italic; }

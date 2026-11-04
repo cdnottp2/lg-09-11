@@ -22,7 +22,8 @@ function create() {
             { num: 3, name: 'Canal Esporte 2', stream_id: 103, stream_icon: '', category_id: '2', epg_channel_id: 'e2' },
             { num: 4, name: 'Cine HD', stream_id: 104, stream_icon: '', category_id: '3', epg_channel_id: 'c1' },
             { num: 5, name: 'Cine SD', stream_id: 105, stream_icon: '', category_id: '3', epg_channel_id: '' },
-            { num: 6, name: 'Cine FHD', stream_id: 106, stream_icon: '', category_id: '3', epg_channel_id: 'c3' }
+            { num: 6, name: 'Cine FHD', stream_id: 106, stream_icon: '', category_id: '3', epg_channel_id: 'c3' },
+            { num: 7, name: 'Premiere 3', stream_id: 107, stream_icon: '', category_id: '2', epg_channel_id: '' }
           ];
           return json(q.category_id ? all.filter(function (c) { return c.category_id === q.category_id; }) : all);
         case 'get_vod_categories': return json([{ category_id: '10', category_name: 'Ação' }]);

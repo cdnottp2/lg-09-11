@@ -143,7 +143,7 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       step('EPG do canal aparece na lista (horário + próximo) e categorias sem prefixo');
       assert.ok(/TV ao vivo/.test($('.sectitle').textContent));
       $$('.cat')[2].click();
-      return waitFor(function () { return $$('.row').length === 2; }, 'cat esportes');
+      return waitFor(function () { return $$('.row').length === 3; }, 'cat esportes');
     }).then(function () {
       step('categorias ao vivo');
       $$('.cat')[3].click();
@@ -152,7 +152,7 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       assert.strictEqual($('.row .epg.none').textContent, 'Sem programação', 'canal sem EPG mostra texto discreto');
       step('canal sem EPG: "Sem programação"');
       $$('.cat')[2].click();
-      return waitFor(function () { return $$('.row').length === 2; }, 'volta a esportes');
+      return waitFor(function () { return $$('.row').length === 3; }, 'volta a esportes');
     }).then(function () {
       $$('.row')[0].click();
       return waitFor(function () { return !$('#player').classList.contains('hidden') && $('#video').getAttribute('src'); }, 'player live');
@@ -471,6 +471,8 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       return waitFor(function () { return /Canal Esporte 2/.test($('.spcard.live').textContent); }, 'canal do jogo na programação');
     }).then(function () {
       assert.ok(!$('.spwarn'), 'uma liga fora do ar não polui a tela');
+      var gu = $('.spch.guess');
+      assert.ok(gu && /Palpite: Premiere 3/.test(gu.textContent), 'jogo sem canal no guia: palpite com o Premiere sem guia');
       $('.spcard.live').click();
       assert.ok(/Raphael Veiga/.test($('.sports').textContent) && /Posse de bola/.test($('.sports').textContent) && /55%/.test($('.sports').textContent), 'gols e estatísticas');
       var pl = $$('.spplay')[0];

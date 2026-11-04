@@ -110,7 +110,7 @@ t('Xtream provider', function (ctx) {
     return Promise.all([x.categories('live'), x.items('live', '2'), x.all('movie'), x.all('series')]);
   }).then(function (r) {
     assert.strictEqual(r[0].length, 3);
-    assert.strictEqual(r[1].length, 2);
+    assert.strictEqual(r[1].length, 3);
     var live = r[1][0];
     assert.ok(/\/live\/joao\/segredo\/102\.m3u8$/.test(live.url));
     assert.ok(/\.ts$/.test(live.alt));

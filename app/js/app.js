@@ -730,7 +730,7 @@
         if (now - c.at > 6 * 3600000) { return; }
         epg[k] = { at: c.at, list: c.list.map(function (e) { return { title: e.title, desc: (e.desc || '').slice(0, 140), start: e.start, stop: e.stop }; }) };
       });
-      store.set('spcache', { id: id, days: sp.days, chan: sp.chan, chanAt: sp.chanAt, epg: epg });
+      store.set('spcache', { id: id, days: sp.days, chan: sp.chan, chanAt: sp.chanAt, noguide: sp.noguide || [], epg: epg });
     }, 800);
   }
   function spLoadCache(sp) {
@@ -739,6 +739,7 @@
     Object.keys(c.days || {}).forEach(function (k) { if (k >= y) { sp.days[k] = c.days[k]; } });
     sp.chan = c.chan || {};
     sp.chanAt = c.chanAt || 0;
+    sp.noguide = c.noguide || [];
     Object.keys(c.epg || {}).forEach(function (k) { if (now - c.epg[k].at < 6 * 3600000) { spEpg[k] = c.epg[k]; } });
     if (Object.keys(sp.days).length) { sp.ok = true; spMerge(); }
   }
@@ -829,7 +830,16 @@
               });
             })(cands[i++]);
           }
-          if (busy === 0 && i >= cands.length) { resolve(Sports.assign(want, cands, progs)); }
+          if (busy === 0 && i >= cands.length) {
+            // canais Premiere sem guia (ou sem jogo identificado nele): palpite para jogos do Brasileirão que não acharam canal
+            var VS = / (x|vs\.?|v) /i;
+            sp.noguide = filterLive(r[1]).filter(function (ch) {
+              if (!/premiere/i.test(ch.name || '')) { return false; }
+              var l = progs[ch.id];
+              return !ch.epgId || !l || !l.length || !l.some(function (e) { return VS.test(' ' + (e.title || '') + ' '); });
+            }).slice(0, 12);
+            resolve(Sports.assign(want, cands, progs));
+          }
         }
         pump();
       });
@@ -841,10 +851,19 @@
   }
 
   function spHits(g) { return (S.sp.chan && S.sp.chan[spGame(g)]) || []; }
+  /* palpite: jogo do Brasileirão sem canal no guia -> canais Premiere sem guia (o Premiere exibe todos os jogos) */
+  function spGuess(g) {
+    if (g.league !== 'bra.1' || g.state === 'post' || spHits(g).length) { return []; }
+    return (S.sp.noguide || []).filter(function (ch) { return ch && ch.id; });
+  }
 
   function spPlay(g, idx) {
     var hits = spHits(g);
-    if (!hits.length) { return; }
+    if (!hits.length) {
+      var gs = spGuess(g);
+      if (gs.length) { startPlay({ kind: 'live', list: gs, idx: idx || 0 }); }
+      return;
+    }
     startPlay({ kind: 'live', list: hits.map(function (x) { return x.ch; }), idx: idx || 0 });
   }
 
@@ -870,6 +889,9 @@
     var ch = null;
     if (hits.length) {
       ch = h('div', { cls: 'spch' }, [icon('live', 18), h('span', { text: hits[0].ch.name + (hits.length > 1 ? '  +' + (hits.length - 1) : '') })]);
+    } else if (spGuess(g).length) {
+      var gg = spGuess(g);
+      ch = h('div', { cls: 'spch guess' }, [icon('live', 18), h('span', { text: 'Palpite: ' + gg[0].name + (gg.length > 1 ? '  +' + (gg.length - 1) : '') })]);
     }
     return h('button', { cls: 'f spcard' + (live ? ' live' : ''), type: 'button', 'data-k': 'g:' + spGame(g), on: { click: function () {
       if (o.play && hits.length) { spPlay(g, 0); } else { S.sp.game = g; S.sp.autoFocus = true; S.sp.autoKey = null; if (S.section === 'sports') { renderSports(); } else { selectSection('sports'); } }
@@ -982,6 +1004,11 @@
       body.appendChild(h('div', { cls: 'spwatch' }, hits.slice(0, 6).map(function (x, i) {
         return h('button', { cls: 'f btn spplay' + (i === 0 ? ' primary' : ''), type: 'button', 'data-k': 'p:' + i, on: { click: function () { spPlay(g, i); } } },
           [icon('play', 22), x.ch.name, h('small', { text: x.prog && x.prog.title ? x.prog.title : '' })]);
+      })));
+    } else if (spGuess(g).length) {
+      body.appendChild(h('div', { cls: 'spnote small', text: 'Não achei este jogo no guia. Palpite: o Premiere exibe todos os jogos do Brasileirão e estes canais seus estão sem guia — confira qual deles está passando.' }));
+      body.appendChild(h('div', { cls: 'spwatch' }, spGuess(g).slice(0, 8).map(function (ch, i) {
+        return h('button', { cls: 'f btn spplay', type: 'button', 'data-k': 'p:' + i, on: { click: function () { spPlay(g, i); } } }, [icon('play', 22), ch.name, h('small', { text: 'sem guia' })]);
       })));
     } else {
       body.appendChild(h('div', { cls: 'spnote small', text: !S.provider || !S.provider.hasEpg ? 'Este servidor não tem guia de programação.' : (sp.scanning ? 'Procurando nos seus canais…' : 'Nenhum dos seus canais parece passar este jogo agora (ou o provedor escreve os nomes de outro jeito).') }));
@@ -2172,7 +2199,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.26.1']
+      ['Versão do app', '1.27.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
