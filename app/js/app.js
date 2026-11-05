@@ -734,9 +734,10 @@
     }, 800);
   }
   function spLoadCache(sp) {
-    var c = store.get('spcache', null), id = spCacheId(), now = Date.now(), y = Sports.ymd(spDay(-1));
+    var c = store.get('spcache', null), id = spCacheId(), now = Date.now();
     if (!c || !id || c.id !== id) { return; }
-    Object.keys(c.days || {}).forEach(function (k) { if (k >= y) { sp.days[k] = c.days[k]; } });
+    var td = Sports.ymd(spDay(0));
+    Object.keys(c.days || {}).forEach(function (k) { if (k >= td) { sp.days[k] = c.days[k]; } });   // dias passados não voltam do cache
     sp.chan = c.chan || {};
     sp.chanAt = c.chanAt || 0;
     sp.noguide = c.noguide || [];
@@ -762,8 +763,13 @@
 
   function spMerge() {
     var sp = S.sp, seen = {}, out = [], keys = Object.keys(sp.days).sort(function (a, b) { return sp.days[b].at - sp.days[a].at; });
+    var now = Date.now();
     keys.forEach(function (k) {
-      sp.days[k].games.forEach(function (g) { if (!seen[spGame(g)]) { seen[spGame(g)] = 1; out.push(g); } });
+      var stale = now - sp.days[k].at > 10 * 60000;   // dia que não é atualizado há tempo: "ao vivo" ali já não vale
+      sp.days[k].games.forEach(function (g) {
+        if (g.state === 'in' && (stale || now - g.start > 5 * 3600000)) { return; }
+        if (!seen[spGame(g)]) { seen[spGame(g)] = 1; out.push(g); }
+      });
     });
     out.sort(function (a, b) { return a.start - b.start; });
     sp.games = out;
@@ -1064,6 +1070,7 @@
     var sp = S.sp, tk = S.homeToken;
     function paint() {
       if (!document.body.contains(host) || tk !== S.homeToken) { return; }
+      spMerge();
       var now = Date.now(), fol = spFollow();
       var l = sp.games.filter(function (g) {
         if (!Sports.visible(g, fol)) { return false; }
@@ -1107,6 +1114,7 @@
   function paintSports(first) {
     var sp = S.sp;
     if (!sp || S.section !== 'sports' || !sp.bodyEl || !document.body.contains(sp.bodyEl)) { return; }
+    spMerge();   // reavalia o que ainda pode estar "ao vivo"
     var cur = Nav.current(), key = cur && cur.getAttribute ? cur.getAttribute('data-k') : null, body = sp.bodyEl;
     var scroll = S.pageEl.scrollTop;
     [].forEach.call(S.pageEl.querySelectorAll('.sptab'), function (b) { b.classList.toggle('on', b.getAttribute('data-k') === 'tab:' + sp.tab); });
@@ -2226,7 +2234,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.27.3']
+      ['Versão do app', '1.27.4']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
