@@ -813,11 +813,14 @@
     sp.scanning = true;
     paintSports();
     Promise.all([S.provider.categories('live'), S.provider.all('live')]).then(function (r) {
-      var cands = Sports.candidateChannels(filterLive(r[1]), r[0], 160), progs = {}, i = 0, busy = 0;
+      var PRI = /premiere|sportv|espn|tnt|caz[eé]|globo|max|sbt|record|band/i;
+      var cands = Sports.candidateChannels(filterLive(r[1]), r[0], 160).sort(function (a, b) { return (PRI.test(b.name) ? 1 : 0) - (PRI.test(a.name) ? 1 : 0); });
+      var progs = {}, i = 0, busy = 0, done = 0;
+      sp.prog = { done: 0, total: cands.length };
       return new Promise(function (resolve) {
         function pump() {
           if (token !== S.loadToken) { resolve(null); return; }
-          while (busy < 4 && i < cands.length) {
+          while (busy < 8 && i < cands.length) {
             (function (ch) {
               var c = spEpg[ch.id];
               if (spEpgFresh(c)) { progs[ch.id] = c.list; return; }
@@ -826,6 +829,9 @@
                 spEpg[ch.id] = { at: Date.now(), list: list };
                 progs[ch.id] = list;
                 busy--;
+                done++;
+                sp.prog.done = done;
+                if (done % 10 === 0 && token === S.loadToken && S.section === 'sports') { paintSports(); }
                 pump();
               });
             })(cands[i++]);
@@ -1011,7 +1017,7 @@
         return h('button', { cls: 'f btn spplay', type: 'button', 'data-k': 'p:' + i, on: { click: function () { spPlay(g, i); } } }, [icon('play', 22), ch.name, h('small', { text: 'sem guia' })]);
       })));
     } else {
-      body.appendChild(h('div', { cls: 'spnote small', text: !S.provider || !S.provider.hasEpg ? 'Este servidor não tem guia de programação.' : (sp.scanning ? 'Procurando nos seus canais…' : 'Nenhum dos seus canais parece passar este jogo agora (ou o provedor escreve os nomes de outro jeito).') }));
+      body.appendChild(h('div', { cls: 'spnote small', text: !S.provider || !S.provider.hasEpg ? 'Este servidor não tem guia de programação.' : (sp.scanning ? 'Procurando nos seus canais…' + (sp.prog && sp.prog.total ? ' (' + sp.prog.done + ' de ' + sp.prog.total + ')' : '') : 'Nenhum dos seus canais parece passar este jogo agora (ou o provedor escreve os nomes de outro jeito).') }));
     }
     var wr = Sports.whereToWatch(g);
     if (wr) {
@@ -2199,7 +2205,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.27.0']
+      ['Versão do app', '1.27.1']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
