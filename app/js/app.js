@@ -856,7 +856,28 @@
     }, function () { sp.scanning = false; sp.chanAt = Date.now(); });
   }
 
-  function spHits(g) { return (S.sp.chan && S.sp.chan[spGame(g)]) || []; }
+  /* afiliadas da mesma rede (Globo Amapá, Globo SP, Globo Cuiabá…) viram uma só: prefere SP, depois FHD */
+  var SP_NET = /^(globo|record|sbt|band)\b/i;
+  function spNetScore(n) { return (/(^|[^A-Za-z0-9])SP($|[^A-Za-z0-9])/i.test(n) ? 4 : 0) + (/FHD/i.test(n) ? 2 : 0) + (/4K|UHD/i.test(n) ? 1 : 0); }
+  var SP_HQ = /FHD|4K|UHD/i;
+  function spDedupe(hits) {
+    // só FHD ou 4K: canais HD/SD ficam de fora quando existe versão FHD/4K (se só houver HD/SD, mantém para não perder o jogo)
+    var hq = hits.filter(function (x) { return SP_HQ.test(x.ch.name || ''); });
+    if (hq.length) { hits = hq; }
+    var best = {}, out = [];
+    hits.forEach(function (x) {
+      var m = SP_NET.exec(x.ch.name || '');
+      if (m) { var k = m[1].toLowerCase(); if (!best[k] || spNetScore(x.ch.name) > spNetScore(best[k].ch.name)) { best[k] = x; } }
+    });
+    hits.forEach(function (x) {
+      var m = SP_NET.exec(x.ch.name || '');
+      if (!m) { out.push(x); return; }
+      var k = m[1].toLowerCase();
+      if (best[k] === x) { out.push(x); }
+    });
+    return out;
+  }
+  function spHits(g) { return spDedupe((S.sp.chan && S.sp.chan[spGame(g)]) || []); }
   /* palpite: jogo do Brasileirão sem canal no guia -> canais Premiere sem guia (o Premiere exibe todos os jogos) */
   function spGuess(g) {
     if (g.league !== 'bra.1' || g.state === 'post' || spHits(g).length) { return []; }
@@ -2205,7 +2226,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.27.1']
+      ['Versão do app', '1.27.3']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
