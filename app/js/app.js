@@ -1869,6 +1869,116 @@
     return h('button', { cls: 'f hubtab', type: 'button', 'data-sec': sec, text: SECT[sec], on: { click: function () { selectSection(sec); } } });
   }
 
+  /* ---------- banner de destaque (Início) ---------- */
+  var heroInfo = {};
+
+  function heroSlides() {
+    var out = [], seen = {};
+    contList().forEach(function (en) {
+      var it = en.item;
+      if (!it || (it.type !== 'movie' && it.type !== 'series') || seen[it.type + ':' + it.id] || out.length >= 3) { return; }
+      seen[it.type + ':' + it.id] = 1;
+      out.push({ it: it, cont: en });
+    });
+    return { list: out, seen: seen };
+  }
+
+  function heroPlayAction(sl) {
+    if (sl.cont) { return function () { resumeCont(sl.cont); }; }
+    if (sl.it.type === 'movie') { return function () { startPlay({ kind: 'movie', item: sl.it }); }; }
+    return function () { showDetail(sl.it); };
+  }
+
+  function heroBanner(rows) {
+    if (S.heroTimer) { clearInterval(S.heroTimer); S.heroTimer = null; }
+    var token = S.homeToken;
+    var base = heroSlides(), slides = base.list, cur = 0, hero = h('div', { cls: 'hero hidden' });
+    var bg = h('div', { cls: 'herobg' }), poster = h('div', { cls: 'heroposter' });
+    var tag = h('div', { cls: 'herotag' }), title = h('div', { cls: 'herotitle' }), meta = h('div', { cls: 'herometa' }), plot = h('div', { cls: 'heroplot' });
+    var btns = h('div', { cls: 'herobtns' }), dots = h('div', { cls: 'herodots' });
+    var txt = h('div', { cls: 'herotxt' }, [tag, title, meta, plot, btns]);
+    hero.appendChild(bg); hero.appendChild(h('div', { cls: 'herofade' })); hero.appendChild(poster); hero.appendChild(txt); hero.appendChild(dots);
+
+    function show(i) {
+      if (!slides.length) { return; }
+      cur = (i + slides.length) % slides.length;
+      var sl = slides[cur], it = sl.it, key = it.type + ':' + it.id, inf = heroInfo[key] || {};
+      txt.classList.add('swap');
+      setTimeout(function () {
+        if (!hero.parentNode || token !== S.homeToken) { return; }
+        tag.textContent = sl.cont ? 'CONTINUAR ASSISTINDO' : (it.type === 'movie' ? 'FILME EM DESTAQUE' : 'SÉRIE EM DESTAQUE');
+        title.textContent = it.name;
+        paintMeta(it, inf);
+        plot.textContent = inf.plot || it.plot || '';
+        var back = inf.backdrop || '';
+        bg.style.backgroundImage = bgUrl(back || it.logo || '');
+        hero.classList.toggle('nobd', !back);
+        poster.style.backgroundImage = it.logo ? bgUrl(it.logo) : '';
+        btns.innerHTML = '';
+        var label = sl.cont ? 'Continuar' : (it.type === 'movie' ? 'Assistir' : 'Ver episódios');
+        btns.appendChild(h('button', { cls: 'f btn primary', type: 'button', 'data-k': 'hero-play', on: { click: heroPlayAction(sl) } }, [icon('play', 22), label]));
+        btns.appendChild(h('button', { cls: 'f btn', type: 'button', text: 'Mais informações', 'data-k': 'hero-info', on: { click: function () { showDetail(it); } } }));
+        [].forEach.call(dots.children, function (d, n) { d.classList.toggle('on', n === cur); });
+        txt.classList.remove('swap');
+        if (!heroInfo[key]) { loadInfo(sl, cur); }
+      }, 220);
+    }
+    function paintMeta(it, inf) {
+      meta.textContent = metaLine([inf.year || it.year, it.rating ? 'Nota ' + it.rating : '', inf.genre, inf.duration]);
+    }
+    function loadInfo(sl, idx) {
+      var it = sl.it, key = it.type + ':' + it.id;
+      heroInfo[key] = heroInfo[key] || {};
+      var p = it.type === 'movie' ? S.provider.movieInfo(it) : S.provider.episodes(it).then(function (r) {
+        var i = r.info || {}, b = i.backdrop_path;
+        b = Object.prototype.toString.call(b) === '[object Array]' ? b[0] : b;
+        return { plot: i.plot || '', genre: i.genre || '', year: String(i.releaseDate || '').slice(0, 4), backdrop: b || '' };
+      });
+      p.then(function (i) {
+        heroInfo[key] = { plot: i.plot || '', genre: i.genre || '', year: i.year || '', duration: i.duration || '', backdrop: i.backdrop || '' };
+        if (hero.parentNode && token === S.homeToken && slides[cur] === sl) { show(cur); }
+      }, function () {});
+    }
+    function rebuildDots() {
+      dots.innerHTML = '';
+      slides.forEach(function (x, n) { dots.appendChild(h('button', { cls: 'herodot' + (n === cur ? ' on' : ''), type: 'button', 'aria-label': 'Destaque ' + (n + 1), on: { click: function () { show(n); } } })); });
+    }
+    function start() {
+      if (!slides.length) { return; }
+      hero.classList.remove('hidden');
+      rebuildDots();
+      show(0);
+      S.heroTimer = setInterval(function () {
+        if (!document.body.contains(hero) || token !== S.homeToken) { clearInterval(S.heroTimer); S.heroTimer = null; return; }
+        var f = Nav.current();
+        if (S.mode !== 'browse' || slides.length < 2 || (f && hero.contains(f))) { return; }   // parado enquanto o foco está nos botões
+        show(cur + 1);
+      }, 8000);
+    }
+    rows.appendChild(hero);
+    if (slides.length) { start(); }
+    // completa com os destaques do catálogo (em alta); se não houver histórico, o banner nasce deles
+    setTimeout(function () {
+      if (token !== S.homeToken || !S.provider) { return; }
+      Promise.all(['movie', 'series'].map(function (sec) {
+        return S.provider.all(sec).then(function (l) { return trendList(sec, l); }, function () { return []; });
+      })).then(function (r) {
+        if (token !== S.homeToken || !hero.parentNode) { return; }
+        var add = [];
+        [0, 1, 2].forEach(function (n) {
+          [r[0], r[1]].forEach(function (l) {
+            var it = l && l[n];
+            if (it && it.logo && !base.seen[it.type + ':' + it.id]) { base.seen[it.type + ':' + it.id] = 1; add.push({ it: it, cont: null }); }
+          });
+        });
+        if (!add.length) { return; }
+        var was = slides.length;
+        slides = slides.concat(add).slice(0, 8);
+        if (!was) { start(); } else { rebuildDots(); }
+      }, function () {});
+    }, 300);
+  }
+
   function renderHome() {
     var page = S.pageEl;
     page.className = 'page scroll home';
@@ -1881,6 +1991,7 @@
     }
     var rows = h('div', { cls: 'hrows' });
     page.appendChild(rows);
+    heroBanner(rows);
 
     var conts = contList().slice(0, 12);
     if (conts.length) { rows.appendChild(makeRow('Continuar assistindo', conts.map(contCard))); }
@@ -2234,7 +2345,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.27.4']
+      ['Versão do app', '1.28.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {

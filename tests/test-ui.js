@@ -107,6 +107,11 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
     }).then(function () {
       assert.deepStrictEqual($$('.hubtab').map(function (e) { return e.textContent; }), ['TV ao vivo', 'Filmes', 'Séries', 'Esportes']);
       assert.ok($('.hubtab.focus'), 'foco no primeiro item do menu');
+      return waitFor(function () { return $('.herotitle') && $('.herotitle').textContent; }, 'banner de destaque');
+    }).then(function () {
+      assert.ok(/Filme Teste/.test($('.herotitle').textContent), 'banner mostra um destaque do catálogo');
+      assert.ok($('.herobtns .btn.primary') && /Assistir/.test($('.herobtns .btn.primary').textContent) && $('.herobtns .btn:not(.primary)'), 'banner com Assistir e Mais informações');
+      step('home: banner de destaque');
       assert.ok(!$('.side'), 'sem barra lateral');
       assert.ok(!$('.hub-links') && !$$('.hub-links .btn').length, 'sem botões de atalho embaixo (Buscar/Configurações vão no topo)');
       assert.ok(!$$('.hrow-title').some(function (t) { return t.textContent === 'Favoritos'; }), 'sem favoritos: a fileira não aparece');

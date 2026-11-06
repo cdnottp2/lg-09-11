@@ -91,3 +91,7 @@ Em **Configurações → Continuar tocando com a tela bloqueada** (ligado por pa
 Cada jogo mostra, além do botão do canal (quando a programação do seu servidor traz o jogo), uma linha **Onde: ...** com quem transmite no Brasil e, na tela do jogo, a lista completa. É uma tabela fixa por campeonato em `app/js/sports.js` (`RIGHTS`, `LIBRA`, `FFU`), conferida na imprensa em nov/2026: os direitos mudam por temporada e, em alguns torneios, por jogo. Serviços sem guia (HBO Max, Paramount+, Prime Video, YouTube) aparecem só como informação.
 
 Quando um jogo do Brasileirão não acha canal no guia, o app mostra **Palpite: Premiere N** com os canais Premiere do seu servidor que estão sem guia (ou sem nenhum jogo identificado no guia). O Premiere exibe todos os jogos, mas qual canal passa qual jogo a Globo decide por rodada; por isso é só um palpite para você conferir.
+
+## Início: banner de destaque
+
+No topo da Início, abaixo das abas, um banner troca a cada 8 s (parado enquanto o foco está nos botões; os pontinhos trocam na mão). Começa pelo que você está **continuando a assistir** (até 3) e completa com filmes e séries **em alta** do catálogo. Mostra fundo (backdrop do servidor, ou o pôster desfocado), título, ano, nota, gênero, duração e sinopse, com **Continuar/Assistir** e **Mais informações**. Abaixo vêm as fileiras: continuar assistindo, jogos de hoje, favoritos, filmes e séries.
