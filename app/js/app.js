@@ -1883,16 +1883,17 @@
   function gFloor(t) { return Math.floor(t / 1800000) * 1800000; }
   function gSpan(a, b) { return hhmm(new Date(a)) + ' – ' + hhmm(new Date(b)); }
 
-  function renderGuide() {
-    var page = S.pageEl;
-    page.className = 'page scroll guide';
+  function renderGuide(host, over) {
+    var page = host || S.pageEl;
+    if (!over) { page.className = 'page scroll guide'; }
     page.innerHTML = '';
-    var st = G = { win: gFloor(Date.now() - 30 * 60000), chans: [], rows: [], queue: [], busy: 0, cat: null, token: S.loadToken, cats: [] };
+    var st = G = { over: !!over, win: gFloor(Date.now() - 30 * 60000), chans: [], rows: [], queue: [], busy: 0, cat: null, token: S.loadToken, cats: [] };
     st.dChan = h('div', { cls: 'gdchan' }); st.dTitle = h('div', { cls: 'gdtitle', text: 'Guia de TV' });
     st.dBar = h('div', { cls: 'gdfill' }); st.dDesc = h('div', { cls: 'gddesc', text: 'Escolha um programa para ver os detalhes.' });
     page.appendChild(h('div', { cls: 'gdetail' }, [st.dChan, st.dTitle, h('div', { cls: 'gdbar' }, [st.dBar]), st.dDesc]));
     st.chips = h('div', { cls: 'spchips gchips' });
-    page.appendChild(st.chips);
+    if (!over) { page.appendChild(st.chips); }
+    else { page.insertBefore(h('button', { cls: 'f btn gclose', type: 'button', 'data-k': 'g-close', on: { click: closePGuide } }, [icon('back', 24), 'Voltar ao canal']), page.firstChild); }
     st.timeEl = h('div', { cls: 'gtimes' });
     var nav = h('div', { cls: 'gnav' }, [
       h('button', { cls: 'f btn', type: 'button', text: '‹ 3 h', 'data-k': 'g-prev', on: { click: function () { gShift(-3 * 3600000); } } }),
@@ -1904,6 +1905,12 @@
     page.appendChild(st.body);
     page.onscroll = function () { gLoadVisible(); };
     gPaintTimes();
+    if (over) {
+      // dentro do player: lista do canal atual (±75 canais), o som segue tocando
+      var all = S.ctx.list, idx = S.ctx.idx, from = Math.max(0, Math.min(idx - 75, all.length - 150));
+      gBuildRows(all.slice(from, from + 150), idx - from);
+      return;
+    }
     st.body.appendChild(h('div', { cls: 'empty', text: 'Carregando canais…' }));
     S.provider.categories('live').then(function (cats) {
       if (!G || G !== st) { return; }
@@ -1934,28 +1941,84 @@
     st.body.appendChild(h('div', { cls: 'empty', text: 'Carregando canais…' }));
     S.provider.items('live', id).then(function (items) {
       if (G !== st || st.cat !== id) { return; }
-      st.chans = filterLive(items).slice(0, 150);
-      st.rows = [];
-      st.queue = [];
-      st.body.innerHTML = '';
-      if (!st.chans.length) { st.body.appendChild(h('div', { cls: 'empty', text: 'Nenhum canal nesta categoria.' })); return; }
-      st.chans.forEach(function (ch, i) {
-        var row = { ch: ch, i: i, track: h('div', { cls: 'gtrack' }), loaded: false };
-        row.el = h('div', { cls: 'grow' }, [
-          h('button', { cls: 'f gch', type: 'button', 'data-k': 'gch:' + ch.id, on: { click: function () { gPlay(i); } } }, [
-            h('span', { cls: 'gnum', text: ch.num ? String(ch.num) : '' }), h('span', { cls: 'gname', text: ch.name })]),
-          row.track
-        ]);
-        row.el.firstChild._gp = { ch: ch, p: null };
-        st.rows.push(row);
-        st.body.appendChild(row.el);
-        gPaintRow(row);
-      });
-      gLoadVisible();
+      gBuildRows(filterLive(items).slice(0, 150), -1);
     }, function (e) { if (G === st) { st.body.innerHTML = ''; st.body.appendChild(h('div', { cls: 'empty', text: 'Erro ao carregar: ' + (e && e.message) })); } });
   }
 
-  function gPlay(i) { startPlay({ kind: 'live', list: G.chans, idx: i }); }
+  function gPlay(i) {
+    var ch = G.chans[i];
+    if (G.over && S.ctx) {
+      var at = S.ctx.list.indexOf(ch);
+      closePGuide();
+      if (at >= 0 && at !== S.ctx.idx) { S.ctx.idx = at; playCurrent(); } else { showOsd(); }
+      return;
+    }
+    startPlay({ kind: 'live', list: G.chans, idx: i });
+  }
+
+  /* guia dentro do player (▲ no canal ao vivo): o vídeo e o som continuam ao fundo */
+  function openPGuide() {
+    if (S.pgOpen || !S.ctx || S.ctx.kind !== 'live') { return; }
+    S.pgOpen = true;
+    S.pgScope = Nav.getScope();
+    var el = $('pguide');
+    clearTimeout(S.osdTimer);
+    $('osd').classList.add('hidden');
+    el.classList.remove('hidden');
+    el.scrollTop = 0;
+    Nav.setScope(el);
+    renderGuide(el, true);
+  }
+
+  function closePGuide() {
+    if (!S.pgOpen) { return; }
+    S.pgOpen = false;
+    $('pguide').classList.add('hidden');
+    $('pguide').innerHTML = '';
+    G = null;
+    Nav.setScope(S.pgScope);
+    S.pgScope = null;
+  }
+
+  function pgKey(k) {
+    if (k === KEY.BACK || k === KEY.ESC || k === KEY.BS || k === KEY.UP && !Nav.current()) { closePGuide(); return; }
+    switch (k) {
+      case KEY.UP: Nav.move('up'); break;
+      case KEY.DOWN: Nav.move('down'); break;
+      case KEY.LEFT: Nav.move('left'); break;
+      case KEY.RIGHT: Nav.move('right'); break;
+      case KEY.ENTER: Nav.activate(); break;
+      case KEY.CHUP: zap(1); closePGuide(); break;
+      case KEY.CHDN: zap(-1); closePGuide(); break;
+      default: break;
+    }
+  }
+
+  function gBuildRows(chans, focusIdx) {
+    var st = G;
+    st.chans = chans;
+    st.rows = [];
+    st.queue = [];
+    st.body.innerHTML = '';
+    if (!st.chans.length) { st.body.appendChild(h('div', { cls: 'empty', text: 'Nenhum canal nesta categoria.' })); return; }
+    st.chans.forEach(function (ch, i) {
+      var row = { ch: ch, i: i, track: h('div', { cls: 'gtrack' }), loaded: false };
+      row.el = h('div', { cls: 'grow' }, [
+        h('button', { cls: 'f gch', type: 'button', 'data-k': 'gch:' + ch.id, on: { click: function () { gPlay(i); } } }, [
+          h('span', { cls: 'gnum', text: ch.num ? String(ch.num) : '' }), h('span', { cls: 'gname', text: ch.name })]),
+        row.track
+      ]);
+      row.el.firstChild._gp = { ch: ch, p: null };
+      st.rows.push(row);
+      st.body.appendChild(row.el);
+      gPaintRow(row);
+    });
+    if (focusIdx >= 0 && st.rows[focusIdx]) {
+      st.rows[focusIdx].queued = true; st.queue.push(st.rows[focusIdx]);   // o canal atual carrega primeiro
+      Nav.focus(st.rows[focusIdx].el.firstChild);
+    }
+    gLoadVisible();
+  }
 
   function gShift(d) { G.win += d; gRepaint(); }
 
@@ -2001,7 +2064,7 @@
   }
 
   function gLoadVisible() {
-    var st = G, page = S.pageEl, top = page.scrollTop - 200, bot = page.scrollTop + page.clientHeight + 200;
+    var st = G, page = st && st.over ? $('pguide') : S.pageEl, top = page.scrollTop - 200, bot = page.scrollTop + page.clientHeight + 200;
     if (!st || !document.body.contains(st.body)) { return; }
     st.rows.forEach(function (r) {
       if (r.loaded || r.queued) { return; }
@@ -2523,7 +2586,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.29.0']
+      ['Versão do app', '1.30.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -2870,8 +2933,10 @@
   function startPlay(ctx, fromStart) {
     setMini(false);
     S.ctx = ctx;
-    S.resumeFocus = Nav.current();
-    S.resumeScope = Nav.getScope();
+    if (S.mode !== 'player') {
+      S.resumeFocus = Nav.current();
+      S.resumeScope = Nav.getScope();
+    }
     S.mode = 'player';
     nativeFull(true);
     S.lastSave = Date.now();
@@ -3114,13 +3179,13 @@
 
   /* menu de baixo do player: [Episódio anterior] [Áudio e legenda] [Próximo episódio]; setas ←/→ escolhem, OK ativa */
   function osdBtns() {
-    return [$('osd-prevep'), $('osd-tracks'), $('osd-nextep')].filter(function (b) { return !b.classList.contains('hidden'); });
+    return [$('osd-prevep'), $('osd-tracks'), $('osd-guide'), $('osd-nextep')].filter(function (b) { return !b.classList.contains('hidden'); });
   }
 
   function setOsdMenu(on) {
     S.osdMenu = !!on;
     if (!S.osdSel || S.osdSel.classList.contains('hidden')) { S.osdSel = $('osd-tracks'); }
-    [$('osd-prevep'), $('osd-tracks'), $('osd-nextep')].forEach(function (b) { b.classList.toggle('focus', !!on && b === S.osdSel); });
+    [$('osd-prevep'), $('osd-tracks'), $('osd-guide'), $('osd-nextep')].forEach(function (b) { b.classList.toggle('focus', !!on && b === S.osdSel); });
   }
 
   function moveOsdSel(d) {
@@ -3134,6 +3199,7 @@
     var b = S.osdSel;
     if (b === $('osd-prevep')) { stepEpisode(-1); }
     else if (b === $('osd-nextep')) { stepEpisode(1); }
+    else if (b === $('osd-guide')) { openPGuide(); }
     else { openTracks(); }
   }
 
@@ -3152,6 +3218,7 @@
   function updateEpMenu() {
     var c = S.ctx, ep = c && c.kind === 'ep', pv = ep && c.idx > 0 ? c.eps[c.idx - 1] : null, nx = ep && c.idx + 1 < c.eps.length ? c.eps[c.idx + 1] : null;
     $('osd').classList.toggle('hasep', !!ep);
+    $('osd-guide').classList.toggle('hidden', !(c && c.kind === 'live'));
     $('osd-prevep').classList.toggle('hidden', !pv);
     $('osd-nextep').classList.toggle('hidden', !nx);
     if (pv) { $('osd-prevep').lastChild.textContent = 'Anterior · T' + pv.season + ' E' + pv.num; }
@@ -3241,6 +3308,7 @@
     saveResume();
     cloudSoon(600);
     closeTracks();
+    closePGuide();
     clearTimeout(S.osdTimer);
     $('osd').classList.add('hidden');
     if (keep) {
@@ -3307,20 +3375,20 @@
     switch (k) {
       case KEY.GREEN: openTracks(); break;
       case KEY.UP: case KEY.CHUP:
-        if (live) { zap(1); }
+        if (live) { if (k === KEY.UP) { openPGuide(); } else { zap(1); } }   // ▲ abre o guia sem parar o som; CH+/CH− trocam de canal
         else if (k === KEY.CHUP && c.kind === 'ep') { stepEpisode(1); }
         else { if (!S.osdMenu) { S.osdSel = $('osd-tracks'); } showOsd(true); }   // cima e baixo abrem o menu de baixo
         break;
       case KEY.DOWN: case KEY.CHDN:
-        if (live) { zap(-1); }
+        if (live) { if (k === KEY.DOWN) { if (!S.osdMenu) { S.osdSel = $('osd-tracks'); } showOsd(true); } else { zap(-1); } }
         else if (k === KEY.CHDN && c.kind === 'ep') { stepEpisode(-1); }
         else { if (!S.osdMenu) { S.osdSel = $('osd-tracks'); } showOsd(true); }
         break;
       case KEY.LEFT:
-        if (live) { showOsd(); } else if (S.osdMenu && !$('osd').classList.contains('hidden')) { moveOsdSel(-1); } else { seek(-1); }
+        if (S.osdMenu && !$('osd').classList.contains('hidden')) { moveOsdSel(-1); } else if (live) { showOsd(); } else { seek(-1); }
         break;
       case KEY.RIGHT:
-        if (live) { showOsd(); } else if (S.osdMenu && !$('osd').classList.contains('hidden')) { moveOsdSel(1); } else { seek(1); }
+        if (S.osdMenu && !$('osd').classList.contains('hidden')) { moveOsdSel(1); } else if (live) { showOsd(); } else { seek(1); }
         break;
       case KEY.REW: if (!live) { Player.seek(-30); showOsd(); } break;
       case KEY.FF: if (!live) { Player.seek(30); showOsd(); } break;
@@ -3377,7 +3445,7 @@
 
   function onKey(e) {
     var k = e.keyCode, a = document.activeElement;
-    if (S.mode === 'player') { e.preventDefault(); if (S.tracksOpen) { tracksKey(k); } else { playerKey(k); } return; }
+    if (S.mode === 'player') { e.preventDefault(); if (S.pgOpen) { pgKey(k); } else if (S.tracksOpen) { tracksKey(k); } else { playerKey(k); } return; }
     var typing = a && a.tagName === 'INPUT';
     if (typing) {
       if (k === KEY.ENTER) {
@@ -3452,7 +3520,7 @@
     });
 
     Nav.onFocus(function (el) {
-      if (el._gp && G && S.section === 'guide') { gFocus(el._gp); }
+      if (el._gp && G && (G.over || S.section === 'guide')) { gFocus(el._gp); }
       var i = el.getAttribute('data-i');
       if (i !== null && S.mode === 'browse' && S.shown < S.items.length && S.shown - parseInt(i, 10) < 14) { renderMore(); }
     });
@@ -3488,6 +3556,12 @@
     $('player').addEventListener('click', function () { if (S.mini && Date.now() - (S.miniAt || 0) > 700) { expandPlayer(); } });
     $('osd-tracks').addEventListener('click', function (e) { e.stopPropagation(); openTracks(); });
     $('osd-tracks').insertBefore(icon('cc', 30), $('osd-tracks').firstChild);
+    $('osd-guide').insertBefore(icon('guide', 30), $('osd-guide').firstChild);
+    $('osd-guide').addEventListener('click', function (e) { e.stopPropagation(); openPGuide(); });
+    $('pguide').addEventListener('touchstart', function (e) { e.stopPropagation(); });
+    $('pguide').addEventListener('touchmove', function (e) { e.stopPropagation(); });
+    $('pguide').addEventListener('touchend', function (e) { e.stopPropagation(); });
+    $('pguide').addEventListener('click', function (e) { e.stopPropagation(); });
     $('osd-prevep').insertBefore(icon('skipprev', 28), $('osd-prevep').firstChild);
     $('osd-nextep').insertBefore(icon('skipnext', 28), $('osd-nextep').firstChild);
     $('osd-prevep').addEventListener('click', function (e) { e.stopPropagation(); stepEpisode(-1); });

@@ -785,34 +785,34 @@ body.compact .spwhrow { font-size: 16px; padding: 8px 12px; }
 .spch.guess { opacity: .8; font-style: italic; }
 
 /* banner de destaque da Início */
-.hero { position: relative; height: 400px; margin: 26px 70px 6px 70px; border-radius: 30px; overflow: hidden; background: #0e1626; }
+.hero { position: relative; height: 640px; margin: 14px 0 10px 0; border-radius: 0; overflow: hidden; background: #0e1626; }
 .herobg { position: absolute; left: 0; right: 0; top: 0; bottom: 0; background-size: cover; background-position: center 25%; transition: opacity .4s; }
 .hero.nobd .herobg { filter: blur(22px); transform: scale(1.15); opacity: .55; }
 .herofade { position: absolute; left: 0; right: 0; top: 0; bottom: 0; background: linear-gradient(90deg, rgba(8,13,24,.96) 0%, rgba(8,13,24,.78) 42%, rgba(8,13,24,.1) 100%), linear-gradient(0deg, rgba(8,13,24,.7) 0%, rgba(8,13,24,0) 45%); }
-.heroposter { display: none; position: absolute; right: 70px; top: 40px; bottom: 40px; width: 240px; border-radius: 18px; background-size: cover; background-position: center; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
+.heroposter { display: none; position: absolute; right: 90px; top: 60px; bottom: 60px; width: 340px; border-radius: 18px; background-size: cover; background-position: center; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
 .hero.nobd .heroposter { display: block; }
-.herotxt { position: absolute; left: 56px; top: 0; bottom: 0; width: 58%; display: flex; flex-direction: column; justify-content: center; transition: opacity .22s; }
+.herotxt { position: absolute; left: 84px; top: 0; bottom: 0; width: 52%; display: flex; flex-direction: column; justify-content: center; transition: opacity .22s; }
 .herotxt.swap { opacity: 0; }
-.herotag { font-size: 20px; font-weight: 700; letter-spacing: 3px; color: #3ab4e0; margin-bottom: 10px; }
-.herotitle { font-size: 60px; font-weight: 800; line-height: 1.05; margin-bottom: 12px; max-height: 132px; overflow: hidden; }
-.herometa { font-size: 24px; color: #c3cfe2; margin-bottom: 12px; }
-.heroplot { font-size: 24px; line-height: 1.35; color: #d3dbe8; max-height: 98px; overflow: hidden; margin-bottom: 22px; }
+.herotag { font-size: 24px; font-weight: 700; letter-spacing: 3px; color: #3ab4e0; margin-bottom: 10px; }
+.herotitle { font-size: 84px; font-weight: 800; line-height: 1.04; margin-bottom: 16px; max-height: 180px; overflow: hidden; }
+.herometa { font-size: 28px; color: #c3cfe2; margin-bottom: 16px; }
+.heroplot { font-size: 28px; line-height: 1.4; color: #d3dbe8; max-height: 120px; overflow: hidden; margin-bottom: 30px; }
 .herobtns { display: flex; }
 .herobtns .btn { margin-right: 16px; }
-.herodots { position: absolute; right: 36px; bottom: 24px; display: flex; }
+.herodots { position: absolute; right: 60px; bottom: 34px; display: flex; }
 .herodot { width: 14px; height: 14px; margin-left: 10px; padding: 0; border: 0; border-radius: 7px; background: rgba(255,255,255,.35); cursor: pointer; transition: width .25s; }
 .herodot.on { width: 38px; background: #3ab4e0; }
-body.compact .hero { height: 232px; margin: 12px 36px 2px; border-radius: 18px; }
-body.compact .herotxt { left: 24px; width: 66%; }
+body.compact .hero { height: 290px; margin: 8px 0 2px; border-radius: 0; }
+body.compact .herotxt { left: 36px; width: 66%; }
 body.compact .herotag { font-size: 12px; margin-bottom: 4px; letter-spacing: 2px; }
-body.compact .herotitle { font-size: 30px; margin-bottom: 6px; max-height: 66px; }
+body.compact .herotitle { font-size: 36px; margin-bottom: 6px; max-height: 66px; }
 body.compact .herometa { font-size: 14px; margin-bottom: 6px; }
-body.compact .heroplot { font-size: 14px; max-height: 40px; margin-bottom: 12px; }
+body.compact .heroplot { font-size: 15px; max-height: 44px; margin-bottom: 12px; }
 body.compact .heroposter { width: 120px; right: 30px; top: 20px; bottom: 20px; }
 body.compact .herodots { right: 18px; bottom: 12px; }
 body.compact .herodot { width: 9px; height: 9px; margin-left: 7px; }
 body.compact .herodot.on { width: 24px; }
-body.portrait .hero { height: 200px; margin: 8px 14px 0; }
+body.portrait .hero { height: 230px; margin: 6px 0 0; }
 body.portrait .herotxt { width: 90%; left: 16px; }
 body.portrait .heroplot { display: none; }
 body.portrait .heroposter { display: none !important; }
@@ -848,3 +848,12 @@ body.compact .gdetail { min-height: 110px; padding: 12px 18px; margin: 8px 0; }
 body.compact .gdtitle { font-size: 24px; margin-bottom: 6px; max-height: 56px; }
 body.compact .gdchan { font-size: 14px; }
 body.compact .gddesc { font-size: 14px; max-height: 40px; }
+
+/* guia dentro do player: o vídeo aparece por trás, a grade fica na parte de baixo */
+.pguide { position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 6; padding-top: 24px; background: linear-gradient(180deg, rgba(8,13,24,0) 0%, rgba(8,13,24,.15) 22%, rgba(8,13,24,.94) 46%); }
+.pguide .gdetail { width: 960px; background: rgba(8,13,24,.62); margin-top: 0; }
+.pguide .gclose { position: absolute; right: 70px; top: 24px; z-index: 2; }
+.pguide .grows { padding-top: 6px; }
+#osd-guide { }
+body.compact .pguide .gdetail { width: 560px; }
+body.compact .pguide .gclose { right: 30px; top: 12px; }

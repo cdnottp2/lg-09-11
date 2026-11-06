@@ -179,10 +179,26 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       return waitFor(function () { return !$('#player').classList.contains('hidden') && $('#video').getAttribute('src'); }, 'player live');
     }).then(function () {
       assert.ok(/102\.m3u8$/.test($('#video').getAttribute('src')));
-      key(38);
-      return waitFor(function () { return /103\.m3u8$/.test($('#video').getAttribute('src') || ''); }, 'zap');
+      key(38);   // ▲ abre o guia por cima, o canal segue tocando
+      return waitFor(function () { return !$('#pguide').classList.contains('hidden') && $$('#pguide .grow').length >= 2; }, 'guia dentro do player');
     }).then(function () {
-      step('player ao vivo + troca de canal');
+      assert.ok(/102\.m3u8$/.test($('#video').getAttribute('src')), 'o canal continua tocando com o guia aberto');
+      assert.ok($('#pguide .gdetail') && $('#pguide .gclose'), 'guia com detalhe e botão Voltar ao canal');
+      key(461);
+      assert.ok($('#pguide').classList.contains('hidden') && !$('#player').classList.contains('hidden'), 'Voltar fecha só o guia e segue no player');
+      key(38);
+      return waitFor(function () { return $$('#pguide .gch').length >= 2; }, 'guia reaberto');
+    }).then(function () {
+      $$('#pguide .gch')[1].click();   // escolhe outro canal no guia
+      return waitFor(function () { return /103\.m3u8$/.test($('#video').getAttribute('src') || '') && $('#pguide').classList.contains('hidden'); }, 'troca de canal pelo guia');
+    }).then(function () {
+      key(33);   // CH+ continua trocando de canal
+      return waitFor(function () { return !/103\.m3u8$/.test($('#video').getAttribute('src') || ''); }, 'zap com CH+');
+    }).then(function () {
+      key(34);
+      return waitFor(function () { return /103\.m3u8$/.test($('#video').getAttribute('src') || ''); }, 'zap com CH-');
+    }).then(function () {
+      step('player ao vivo: guia por cima (▲), troca de canal pelo guia e CH+/CH−');
       // áudio e legenda: faixas expostas pelo player (simuladas) + tecla verde
       var vid = $('#video'), aud = [{ label: '', language: 'por', enabled: true }, { label: 'Dolby 5.1', language: 'eng', enabled: false }];
       Object.defineProperty(vid, 'audioTracks', { value: aud, configurable: true });

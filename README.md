@@ -99,3 +99,7 @@ No topo da Início, abaixo das abas, um banner troca a cada 8 s (parado enquanto
 ## Guia de TV (grade por horário)
 
 Em **TV ao vivo → Guia de TV**: categorias em cima, detalhe do programa em foco (canal, horário, duração, barra de progresso e sinopse), lista de canais à esquerda e grade de 3 h à direita com a linha do "agora". ▲▼ trocam de canal, ◀▶ andam pelos programas (a janela de horário acompanha o foco), **‹ 3 h / Agora / 3 h ›** voltam e avançam a janela. OK (ou toque) abre o canal. A programação de cada canal (até 24 programas) é pedida só para as linhas que aparecem na tela e fica guardada por 20 min.
+
+## Guia dentro do player (TV ao vivo)
+
+Com um canal ao vivo na tela: **▲** abre o **guia por cima** (o vídeo e o som continuam tocando por trás) com os canais da lista atual; **▼** abre o menu de baixo (Áudio e legenda · Guia de TV); **CH+/CH−** (e os dígitos) continuam trocando de canal. No guia, OK/toque em um canal troca para ele; **Voltar** fecha só o guia. No celular há o botão **Guia de TV** no menu de baixo. O banner da Início agora ocupa a largura toda (~60% da altura da TV).
