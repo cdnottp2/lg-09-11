@@ -857,3 +857,19 @@ body.compact .gddesc { font-size: 14px; max-height: 40px; }
 #osd-guide { }
 body.compact .pguide .gdetail { width: 560px; }
 body.compact .pguide .gclose { right: 30px; top: 12px; }
+
+/* banner: textos com limite de linhas (sem cortar letra no meio) e versão retrato maior */
+.herotitle { max-height: none !important; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.heroplot { max-height: none !important; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.herometa { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.compact .heroplot { -webkit-line-clamp: 2; }
+body.portrait .hero { height: 400px; margin: 0 0 6px; }
+body.portrait .herofade { background: linear-gradient(0deg, rgba(8,13,24,.97) 0%, rgba(8,13,24,.86) 38%, rgba(8,13,24,.15) 72%, rgba(8,13,24,.35) 100%); }
+body.portrait .herotxt { left: 18px; right: 18px; width: auto; top: auto; bottom: 34px; justify-content: flex-end; }
+body.portrait .herotag { font-size: 11px; letter-spacing: 2px; margin-bottom: 4px; }
+body.portrait .herotitle { font-size: 30px; margin-bottom: 6px; }
+body.portrait .herometa { font-size: 13px; margin-bottom: 6px; }
+body.portrait .heroplot { display: -webkit-box; font-size: 13px; line-height: 1.35; -webkit-line-clamp: 3; margin-bottom: 12px; }
+body.portrait .herobtns .btn { height: 40px; padding: 0 16px; font-size: 14px; margin-right: 10px; }
+body.portrait .herodots { right: auto; left: 0; right: 0; bottom: 12px; justify-content: center; }
+body.portrait .hero .heroposter { display: none !important; }
