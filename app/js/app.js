@@ -39,6 +39,7 @@
     home: '<path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/>',
     live: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8"/>',
+    guide: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11M3 14.5h6"/>',
     movie: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16M16 4v16M3 9h5M3 15h5M16 9h5M16 15h5"/>',
     series: '<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 4h10"/>',
     fav: STAR,
@@ -1252,7 +1253,7 @@
 
   /* ---------- estrutura: menu inicial + uma tela por seção ---------- */
 
-  var SECT = { live: 'TV ao vivo', movie: 'Filmes', series: 'Séries', search: 'Buscar', fav: 'Favoritos', settings: 'Configurações', dl: 'Downloads', sports: 'Esportes' };
+  var SECT = { live: 'TV ao vivo', movie: 'Filmes', series: 'Séries', search: 'Buscar', fav: 'Favoritos', settings: 'Configurações', dl: 'Downloads', sports: 'Esportes', guide: 'Guia de TV' };
 
   function showBrowse() {
     S.mode = 'browse';
@@ -1350,6 +1351,10 @@
       hd.appendChild(h('button', { cls: 'f btn', on: { click: function () { selectSection('search', { backTo: sec }); } } },
         [icon('search', 26), 'Buscar']));
     }
+    if (sec === 'live') {
+      hd.appendChild(h('button', { cls: 'f btn', 'data-k': 'guide', on: { click: function () { selectSection('guide', { backTo: 'live' }); } } },
+        [icon('guide', 26), 'Guia de TV']));
+    }
     hd.appendChild(S.clockEl);
     updateClock();
   }
@@ -1380,6 +1385,7 @@
     Nav.focus(S.headEl.querySelector('.f'));
     if (sec === 'dl') { renderDownloads(); return; }
     if (sec === 'sports') { renderSports(); return; }
+    if (sec === 'guide') { renderGuide(); return; }
     if (sec === 'settings') { renderSettings(); return; }
     if (sec === 'search') { buildContentOnly(); renderSearch(); return; }
     if (sec === 'fav') { buildContentOnly(); renderFavs(); return; }
@@ -1869,6 +1875,178 @@
     return h('button', { cls: 'f hubtab', type: 'button', 'data-sec': sec, text: SECT[sec], on: { click: function () { selectSection(sec); } } });
   }
 
+  /* ---------- guia de TV (grade por horário) ---------- */
+  var gEpg = {};   // id do canal -> { at, list }
+  var G = null;
+  var G_WIN = 3 * 3600000, G_PX = 8;   // janela de 3 h, 8 px por minuto
+
+  function gFloor(t) { return Math.floor(t / 1800000) * 1800000; }
+  function gSpan(a, b) { return hhmm(new Date(a)) + ' – ' + hhmm(new Date(b)); }
+
+  function renderGuide() {
+    var page = S.pageEl;
+    page.className = 'page scroll guide';
+    page.innerHTML = '';
+    var st = G = { win: gFloor(Date.now() - 30 * 60000), chans: [], rows: [], queue: [], busy: 0, cat: null, token: S.loadToken, cats: [] };
+    st.dChan = h('div', { cls: 'gdchan' }); st.dTitle = h('div', { cls: 'gdtitle', text: 'Guia de TV' });
+    st.dBar = h('div', { cls: 'gdfill' }); st.dDesc = h('div', { cls: 'gddesc', text: 'Escolha um programa para ver os detalhes.' });
+    page.appendChild(h('div', { cls: 'gdetail' }, [st.dChan, st.dTitle, h('div', { cls: 'gdbar' }, [st.dBar]), st.dDesc]));
+    st.chips = h('div', { cls: 'spchips gchips' });
+    page.appendChild(st.chips);
+    st.timeEl = h('div', { cls: 'gtimes' });
+    var nav = h('div', { cls: 'gnav' }, [
+      h('button', { cls: 'f btn', type: 'button', text: '‹ 3 h', 'data-k': 'g-prev', on: { click: function () { gShift(-3 * 3600000); } } }),
+      h('button', { cls: 'f btn', type: 'button', text: 'Agora', 'data-k': 'g-now', on: { click: function () { G.win = gFloor(Date.now() - 30 * 60000); gRepaint(); } } }),
+      h('button', { cls: 'f btn', type: 'button', text: '3 h ›', 'data-k': 'g-next', on: { click: function () { gShift(3 * 3600000); } } })
+    ]);
+    page.appendChild(h('div', { cls: 'gtimerow' }, [nav, st.timeEl]));
+    st.body = h('div', { cls: 'grows' });
+    page.appendChild(st.body);
+    page.onscroll = function () { gLoadVisible(); };
+    gPaintTimes();
+    st.body.appendChild(h('div', { cls: 'empty', text: 'Carregando canais…' }));
+    S.provider.categories('live').then(function (cats) {
+      if (!G || G !== st) { return; }
+      st.cats = cats || [];
+      var last = store.get('cat:live', null), pick = null;
+      st.cats.forEach(function (c) { if (c.id === last) { pick = c; } });
+      pick = pick || st.cats[0];
+      gChips();
+      if (pick) { gLoadCat(pick.id); }
+    }, function (e) { st.body.innerHTML = ''; st.body.appendChild(h('div', { cls: 'empty', text: 'Erro ao carregar: ' + (e && e.message) })); });
+  }
+
+  function gChips() {
+    var st = G;
+    st.chips.innerHTML = '';
+    st.cats.slice(0, 60).forEach(function (c) {
+      st.chips.appendChild(h('button', { cls: 'f spchip' + (c.id === st.cat ? ' on' : ''), type: 'button', text: c.name, 'data-k': 'gc:' + c.id,
+        on: { click: function () { gLoadCat(c.id); } } }));
+    });
+  }
+
+  function gLoadCat(id) {
+    var st = G;
+    st.cat = id;
+    store.set('cat:live', id);
+    [].forEach.call(st.chips.children, function (b) { b.classList.toggle('on', b.getAttribute('data-k') === 'gc:' + id); });
+    st.body.innerHTML = '';
+    st.body.appendChild(h('div', { cls: 'empty', text: 'Carregando canais…' }));
+    S.provider.items('live', id).then(function (items) {
+      if (G !== st || st.cat !== id) { return; }
+      st.chans = filterLive(items).slice(0, 150);
+      st.rows = [];
+      st.queue = [];
+      st.body.innerHTML = '';
+      if (!st.chans.length) { st.body.appendChild(h('div', { cls: 'empty', text: 'Nenhum canal nesta categoria.' })); return; }
+      st.chans.forEach(function (ch, i) {
+        var row = { ch: ch, i: i, track: h('div', { cls: 'gtrack' }), loaded: false };
+        row.el = h('div', { cls: 'grow' }, [
+          h('button', { cls: 'f gch', type: 'button', 'data-k': 'gch:' + ch.id, on: { click: function () { gPlay(i); } } }, [
+            h('span', { cls: 'gnum', text: ch.num ? String(ch.num) : '' }), h('span', { cls: 'gname', text: ch.name })]),
+          row.track
+        ]);
+        row.el.firstChild._gp = { ch: ch, p: null };
+        st.rows.push(row);
+        st.body.appendChild(row.el);
+        gPaintRow(row);
+      });
+      gLoadVisible();
+    }, function (e) { if (G === st) { st.body.innerHTML = ''; st.body.appendChild(h('div', { cls: 'empty', text: 'Erro ao carregar: ' + (e && e.message) })); } });
+  }
+
+  function gPlay(i) { startPlay({ kind: 'live', list: G.chans, idx: i }); }
+
+  function gShift(d) { G.win += d; gRepaint(); }
+
+  function gPaintTimes() {
+    var st = G, t;
+    st.timeEl.innerHTML = '';
+    for (t = 0; t < G_WIN; t += 1800000) {
+      st.timeEl.appendChild(h('div', { cls: 'gtick', style: 'left:' + (t / 60000 * G_PX) + 'px', text: hhmm(new Date(st.win + t)) }));
+    }
+  }
+
+  function gPaintRow(row) {
+    var st = G, tr = row.track, w = G_WIN / 60000 * G_PX, now = Date.now(), c = gEpg[row.ch.id], k, any = false;
+    tr.innerHTML = '';
+    function block(left, width, text, sub, p, cls) {
+      var el = h('button', { cls: 'f gpr ' + (cls || ''), type: 'button', style: 'left:' + left + 'px;width:' + Math.max(36, width - 4) + 'px', 'data-k': 'gp:' + row.ch.id + ':' + (p ? p.start : 'x'),
+        on: { click: function () { gPlay(row.i); } } }, [h('div', { cls: 'gpt', text: text }), h('div', { cls: 'gps', text: sub })]);
+      el._gp = { ch: row.ch, p: p };
+      tr.appendChild(el);
+    }
+    if (!c) { block(0, w, 'Carregando programação…', '', null, 'gwait'); return; }
+    c.list.forEach(function (p) {
+      if (p.stop <= st.win || p.start >= st.win + G_WIN) { return; }
+      var l = Math.max(0, (p.start - st.win) / 60000 * G_PX), r = Math.min(w, (p.stop - st.win) / 60000 * G_PX);
+      if (r - l < 8) { return; }
+      any = true;
+      block(l, r - l, p.title, gSpan(p.start, p.stop), p, p.start <= now && p.stop > now ? 'gnow' : (p.stop <= now ? 'gpast' : ''));
+    });
+    if (!any) { block(0, w, c.list.length ? 'Sem programação neste horário' : 'Sem programação', '', null, 'gwait'); }
+    if (now > st.win && now < st.win + G_WIN) { tr.appendChild(h('div', { cls: 'gnowline', style: 'left:' + ((now - st.win) / 60000 * G_PX) + 'px' })); }
+    k = null;
+  }
+
+  function gRepaint() {
+    var st = G, cur = Nav.current(), key = cur && cur.getAttribute('data-k');
+    gPaintTimes();
+    st.rows.forEach(function (r) { gPaintRow(r); });
+    if (key && /^gp:/.test(key)) {
+      var again = st.body.querySelector('[data-k="' + key + '"]');
+      if (!again) { var ch = key.split(':')[1], t = st.body.querySelector('[data-k^="gp:' + ch + ':"]'); again = t || st.body.querySelector('[data-k="gch:' + ch + '"]'); }
+      if (again) { Nav.focus(again); }
+    }
+  }
+
+  function gLoadVisible() {
+    var st = G, page = S.pageEl, top = page.scrollTop - 200, bot = page.scrollTop + page.clientHeight + 200;
+    if (!st || !document.body.contains(st.body)) { return; }
+    st.rows.forEach(function (r) {
+      if (r.loaded || r.queued) { return; }
+      var y = r.el.offsetTop;
+      if (y + 90 >= top - 400 && y <= bot + 400) { r.queued = true; st.queue.push(r); }
+    });
+    gPump();
+  }
+
+  function gPump() {
+    var st = G;
+    while (st && st.busy < 4 && st.queue.length) {
+      (function (row) {
+        var c = gEpg[row.ch.id];
+        if (c && Date.now() - c.at < 20 * 60000) { row.loaded = true; gPaintRow(row); return; }
+        st.busy++;
+        S.provider.epg(row.ch, 24).then(function (list) { return list; }, function () { return []; }).then(function (list) {
+          st.busy--;
+          gEpg[row.ch.id] = { at: Date.now(), list: list.sort(function (a, b) { return a.start - b.start; }) };
+          row.loaded = true;
+          if (G === st) { var cur = Nav.current(), key = cur && cur.getAttribute('data-k'); gPaintRow(row); if (key && /^gp:/.test(key) && !document.body.contains(cur)) { var ch = key.split(':')[1], t = st.body.querySelector('[data-k^="gp:' + ch + ':"]'); if (t) { Nav.focus(t); } } gPump(); }
+        });
+      })(st.queue.shift());
+    }
+  }
+
+  /* foco em um programa: mostra o detalhe e rola a janela de horário se ele estiver fora */
+  function gFocus(gp) {
+    var st = G;
+    if (!st) { return; }
+    var p = gp.p, ch = gp.ch;
+    st.dChan.textContent = ch.name + (p ? '   ·   ' + gSpan(p.start, p.stop) + '   ·   ' + Math.round((p.stop - p.start) / 60000) + ' min' : '');
+    st.dTitle.textContent = p ? p.title : ch.name;
+    st.dDesc.textContent = p ? (p.desc || 'Sem descrição.') : 'Toque para assistir ao canal.';
+    var now = Date.now(), pct = p && p.start <= now && p.stop > now ? Math.round((now - p.start) / (p.stop - p.start) * 100) : 0;
+    st.dBar.style.width = pct + '%';
+    st.dBar.parentNode.classList.toggle('hidden', !pct);
+    if (p) {
+      var want = st.win;
+      if (p.start < st.win - 1) { want = gFloor(p.start); }
+      else if (p.start >= st.win + G_WIN - 20 * 60000) { want = gFloor(p.start - 30 * 60000); }
+      if (want !== st.win) { st.win = want; setTimeout(gRepaint, 0); }
+    }
+  }
+
   /* ---------- banner de destaque (Início) ---------- */
   var heroInfo = {};
 
@@ -2345,7 +2523,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.28.0']
+      ['Versão do app', '1.29.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -3274,6 +3452,7 @@
     });
 
     Nav.onFocus(function (el) {
+      if (el._gp && G && S.section === 'guide') { gFocus(el._gp); }
       var i = el.getAttribute('data-i');
       if (i !== null && S.mode === 'browse' && S.shown < S.items.length && S.shown - parseInt(i, 10) < 14) { renderMore(); }
     });

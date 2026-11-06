@@ -95,3 +95,7 @@ Quando um jogo do Brasileirão não acha canal no guia, o app mostra **Palpite: 
 ## Início: banner de destaque
 
 No topo da Início, abaixo das abas, um banner troca a cada 8 s (parado enquanto o foco está nos botões; os pontinhos trocam na mão). Começa pelo que você está **continuando a assistir** (até 3) e completa com filmes e séries **em alta** do catálogo. Mostra fundo (backdrop do servidor, ou o pôster desfocado), título, ano, nota, gênero, duração e sinopse, com **Continuar/Assistir** e **Mais informações**. Abaixo vêm as fileiras: continuar assistindo, jogos de hoje, favoritos, filmes e séries.
+
+## Guia de TV (grade por horário)
+
+Em **TV ao vivo → Guia de TV**: categorias em cima, detalhe do programa em foco (canal, horário, duração, barra de progresso e sinopse), lista de canais à esquerda e grade de 3 h à direita com a linha do "agora". ▲▼ trocam de canal, ◀▶ andam pelos programas (a janela de horário acompanha o foco), **‹ 3 h / Agora / 3 h ›** voltam e avançam a janela. OK (ou toque) abre o canal. A programação de cada canal (até 24 programas) é pedida só para as linhas que aparecem na tela e fica guardada por 20 min.

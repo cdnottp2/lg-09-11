@@ -159,6 +159,22 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       $$('.cat')[2].click();
       return waitFor(function () { return $$('.row').length === 3; }, 'volta a esportes');
     }).then(function () {
+      // guia de TV em grade
+      $('[data-k="guide"]').click();
+      return waitFor(function () { return $$('.grow').length === 3 && $$('.gpr:not(.gwait)').length >= 2; }, 'guia: canais com programação');
+    }).then(function () {
+      assert.ok(/Guia de TV/.test($('.sectitle').textContent), 'título Guia de TV');
+      var blk = $$('.gpr:not(.gwait)')[0];
+      w.Nav.focus(blk);
+      assert.ok(/Jornal da Noite|Palmeiras|Cinema/.test($('.gdtitle').textContent), 'detalhe do programa em foco: ' + $('.gdtitle').textContent);
+      assert.ok(/·/.test($('.gdchan').textContent), 'canal e horário no detalhe');
+      assert.strictEqual($$('.gtick').length, 6, 'janela de 3 h com marcas de 30 min');
+      $('[data-k="g-next"]').click();
+      assert.ok($$('.gtick')[0].textContent !== '', 'janela avança sem quebrar');
+      step('guia de TV: grade, detalhe e janela de horário');
+      $('.backbtn').click();
+      return waitFor(function () { return $$('.row').length === 3; }, 'volta do guia para a lista de canais');
+    }).then(function () {
       $$('.row')[0].click();
       return waitFor(function () { return !$('#player').classList.contains('hidden') && $('#video').getAttribute('src'); }, 'player live');
     }).then(function () {

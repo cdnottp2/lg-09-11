@@ -816,3 +816,35 @@ body.portrait .hero { height: 200px; margin: 8px 14px 0; }
 body.portrait .herotxt { width: 90%; left: 16px; }
 body.portrait .heroplot { display: none; }
 body.portrait .heroposter { display: none !important; }
+
+/* guia de TV */
+.guide { padding: 0 70px 60px; }
+.gdetail { margin: 14px 0 12px; padding: 20px 28px; border-radius: 22px; background: rgba(255,255,255,.06); min-height: 168px; }
+.gdchan { font-size: 22px; color: #3ab4e0; font-weight: 600; margin-bottom: 6px; }
+.gdtitle { font-size: 40px; font-weight: 800; line-height: 1.1; margin-bottom: 10px; max-height: 90px; overflow: hidden; }
+.gdbar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.15); margin-bottom: 10px; }
+.gdfill { height: 8px; border-radius: 4px; background: #3ab4e0; }
+.gddesc { font-size: 22px; line-height: 1.35; color: #c9d3e3; max-height: 60px; overflow: hidden; }
+.gchips { margin-bottom: 6px; flex-wrap: nowrap; overflow: hidden; }
+.gtimerow { display: flex; align-items: center; margin: 6px 0 8px; }
+.gnav { width: 340px; flex: none; display: flex; }
+.gnav .btn { height: 52px; padding: 0 16px; margin-right: 8px; font-size: 20px; }
+.gtimes { position: relative; height: 40px; width: 1440px; flex: none; }
+.gtick { position: absolute; top: 8px; font-size: 20px; color: #9fb0c8; padding-left: 8px; border-left: 2px solid rgba(255,255,255,.18); }
+.grow { display: flex; align-items: stretch; margin-bottom: 8px; height: 76px; }
+.gch { width: 332px; flex: none; margin-right: 8px; height: 76px; display: flex; align-items: center; padding: 0 16px; border-radius: 14px; background: #172238; color: #fff; font-size: 22px; text-align: left; border: 0; overflow: hidden; }
+.gnum { color: #6f86a8; width: 52px; flex: none; font-size: 18px; }
+.gname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gtrack { position: relative; width: 1440px; flex: none; height: 76px; overflow: hidden; border-radius: 14px; background: rgba(255,255,255,.03); }
+.gpr { position: absolute; top: 0; height: 76px; padding: 8px 14px; border-radius: 14px; border: 0; background: #1a2740; color: #e8eef8; text-align: left; overflow: hidden; box-sizing: border-box; }
+.gpr.gnow { background: #1f4a45; }
+.gpr.gpast { opacity: .65; }
+.gpr.gwait { background: transparent; color: #7f92b0; }
+.gpt { font-size: 22px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gps { font-size: 17px; color: #9fb0c8; margin-top: 4px; white-space: nowrap; }
+.gnowline { position: absolute; top: 0; bottom: 0; width: 3px; background: #3ab4e0; pointer-events: none; z-index: 2; }
+body.compact .guide { padding: 0 30px 30px; }
+body.compact .gdetail { min-height: 110px; padding: 12px 18px; margin: 8px 0; }
+body.compact .gdtitle { font-size: 24px; margin-bottom: 6px; max-height: 56px; }
+body.compact .gdchan { font-size: 14px; }
+body.compact .gddesc { font-size: 14px; max-height: 40px; }
