@@ -110,3 +110,6 @@ Com um canal ao vivo na tela: **▲** abre o **guia por cima** (o vídeo e o som
 - **Aba Guia (TV ao vivo → Guia de TV):** OK em um canal toca numa janela ao lado (mini player) sem sair do guia; OK de novo no mesmo canal amplia para tela cheia. A grade se ajusta à largura livre (3 h; 2 h quando o mini player ocupa o lado).
 - **Ao vivo não tem mais "Áudio e legenda"** (nem a tecla verde): o menu de baixo traz só "Guia de TV". Filmes e episódios mantêm.
 - O mini player continua sendo o que fica ao voltar para a Início do app (e o Picture-in-Picture ao ir para a tela inicial do celular).
+
+## Animação de abertura (1.32.0)
+Ao abrir o app (e ao trocar de perfil/servidor), o "Conectando…" vira uma animação simples estilo Netflix: o logo (ícone play) aparece com um "pop", o nome **MASTER IPTV** se abre com espaçamento de letras e uma barra de luz percorre abaixo. Dura no mínimo ~1,8 s na abertura; em caso de erro de login a tela sai na hora. Estilos em `#splash` / `.boot*` no `style.css`.

@@ -130,7 +130,26 @@
     toastT = setTimeout(function () { t.classList.add('hidden'); }, ms || 2800);
   }
 
+  /* abertura animada: usada em "Conectando…"; ao abrir o app fica pelo menos 1,8 s para a animação tocar */
+  function splash(on, now) {
+    var el = $('splash');
+    clearTimeout(S.splashT);
+    if (on) {
+      el.classList.remove('out');
+      el.classList.remove('hidden');
+      if (!S.splashAt) { S.splashAt = Date.now(); }
+      return;
+    }
+    var wait = !now && S.splashMin ? Math.max(0, 1800 - (Date.now() - S.splashAt)) : 0;
+    S.splashT = setTimeout(function () {
+      el.classList.add('out');
+      S.splashT = setTimeout(function () { el.classList.add('hidden'); el.classList.remove('out'); }, 450);
+      S.splashAt = 0; S.splashMin = false;
+    }, wait);
+  }
+
   function loading(on, text) {
+    if (text === 'Conectando…' || (!on && S.splashAt)) { splash(on, S.splashNow); return; }
     $('loader-text').textContent = text || 'Carregando…';
     $('loader').classList.toggle('hidden', !on);
   }
@@ -1214,6 +1233,8 @@
     // guarda o que foi digitado: se falhar, o login volta preenchido para editar
     S.draft = cfg;
     store.set('draft', cfg);
+    S.splashMin = !!(o && o.boot);
+    S.splashNow = false;
     loading(true, 'Conectando…');
     loginAuto(cfg).then(function (r) {
       if (!r.info.ok) { throw new Error('Usuário ou senha inválidos (ou conta inativa).'); }
@@ -1229,7 +1250,9 @@
       if (o && o.boot && profiles().length > 1) { showProfiles(false); }
       else if (o && o.boot && opt('autoplay')) { autoOpenLast(); }
     }).then(null, function (e) {
+      S.splashNow = true;   // erro: não segura a tela de login
       loading(false);
+      S.splashNow = false;
       S.provider = null;
       if (o && o.boot && e && e.status === 0 && hasDl() && dlCount()) {   // abriu sem internet: vai direto aos downloads
         showOffline();
@@ -2614,7 +2637,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.31.0']
+      ['Versão do app', '1.32.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
