@@ -172,6 +172,13 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       $('[data-k="g-next"]').click();
       assert.ok($$('.gtick')[0].textContent !== '', 'janela avança sem quebrar');
       step('guia de TV: grade, detalhe e janela de horário');
+      // OK em um canal toca numa janela ao lado (mini player) sem sair do guia; OK de novo no mesmo canal amplia
+      $$('.gch')[0].click();
+      assert.ok($('#player').classList.contains('mini') && $$('.grow').length === 3, 'canal toca ao lado, guia continua na tela');
+      $$('.gch')[0].click();
+      assert.ok(!$('#player').classList.contains('mini'), 'OK de novo no mesmo canal amplia');
+      key(27);
+      assert.ok($('#player').classList.contains('mini'), 'Voltar volta ao mini player ao lado do guia');
       $('.backbtn').click();
       return waitFor(function () { return $$('.row').length === 3; }, 'volta do guia para a lista de canais');
     }).then(function () {
@@ -199,20 +206,11 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       return waitFor(function () { return /103\.m3u8$/.test($('#video').getAttribute('src') || ''); }, 'zap com CH-');
     }).then(function () {
       step('player ao vivo: guia por cima (▲), troca de canal pelo guia e CH+/CH−');
-      // áudio e legenda: faixas expostas pelo player (simuladas) + tecla verde
-      var vid = $('#video'), aud = [{ label: '', language: 'por', enabled: true }, { label: 'Dolby 5.1', language: 'eng', enabled: false }];
-      Object.defineProperty(vid, 'audioTracks', { value: aud, configurable: true });
-      var tt = vid.textTracks;
-      vid.dispatchEvent(new w.Event('loadedmetadata'));
+      // ao vivo não tem "Áudio e legenda": só o Guia de TV no menu de baixo
       key(404);
-      assert.ok(!$('#tracks').classList.contains('hidden'), 'painel abre com a tecla verde');
-      assert.deepStrictEqual($$('#tracks .topt .t-lbl').map(function (e) { return e.textContent; }), ['Português', 'Inglês · Dolby 5.1']);
-      assert.ok(/não traz legendas/.test($('#tracks').textContent), 'sem legendas: aviso');
-      $$('#tracks .topt')[1].click();
-      assert.deepStrictEqual(aud.map(function (t) { return t.enabled; }), [false, true], 'troca o áudio');
-      key(27);
-      assert.ok($('#tracks').classList.contains('hidden') && !$('#player').classList.contains('hidden'), 'Voltar fecha só o painel');
-      step('áudio e legenda: painel, troca de faixa, Voltar fecha só o painel');
+      assert.ok($('#tracks').classList.contains('hidden'), 'tecla verde não abre áudio/legenda no ao vivo');
+      assert.ok($('#osd-tracks').classList.contains('hidden') && !$('#osd-guide').classList.contains('hidden'), 'menu do ao vivo: só Guia de TV');
+      step('ao vivo sem áudio e legenda');
       key(27);
       assert.ok(!$('#player').classList.contains('hidden') && $('#player').classList.contains('mini'), 'Voltar minimiza o player');
       assert.ok(d.body.classList.contains('mini-on') && !$('#app').classList.contains('hidden'), 'lista visível com o mini player');
@@ -290,6 +288,20 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       step('séries -> temporadas -> episódio');
       // episódios: menu de baixo com anterior/próximo, e CH+/CH- (sem botões coloridos)
       var vsrc = function () { return $('#video').getAttribute('src'); };
+      // áudio e legenda: faixas expostas pelo player (simuladas) + tecla verde
+      var vid = $('#video'), aud = [{ label: '', language: 'por', enabled: true }, { label: 'Dolby 5.1', language: 'eng', enabled: false }];
+      Object.defineProperty(vid, 'audioTracks', { value: aud, configurable: true });
+      var tt = vid.textTracks;
+      vid.dispatchEvent(new w.Event('loadedmetadata'));
+      key(404);
+      assert.ok(!$('#tracks').classList.contains('hidden'), 'painel abre com a tecla verde');
+      assert.deepStrictEqual($$('#tracks .topt .t-lbl').map(function (e) { return e.textContent; }), ['Português', 'Inglês · Dolby 5.1']);
+      assert.ok(/não traz legendas/.test($('#tracks').textContent), 'sem legendas: aviso');
+      $$('#tracks .topt')[1].click();
+      assert.deepStrictEqual(aud.map(function (t) { return t.enabled; }), [false, true], 'troca o áudio');
+      key(27);
+      assert.ok($('#tracks').classList.contains('hidden') && !$('#player').classList.contains('hidden'), 'Voltar fecha só o painel');
+      step('áudio e legenda: painel, troca de faixa, Voltar fecha só o painel');
       vt = 0; vd = NaN;   // sem duração: trocar de episódio não grava ponto de "continuar assistindo" neste teste
       assert.ok($('#osd-prevep').classList.contains('hidden') && !$('#osd-nextep').classList.contains('hidden'), 'primeiro episódio: só "próximo"');
       assert.ok(/E2/.test($('#osd-nextep').textContent), 'botão diz qual é o próximo: ' + $('#osd-nextep').textContent);

@@ -103,3 +103,10 @@ Em **TV ao vivo → Guia de TV**: categorias em cima, detalhe do programa em foc
 ## Guia dentro do player (TV ao vivo)
 
 Com um canal ao vivo na tela: **▲** abre o **guia por cima** (o vídeo e o som continuam tocando por trás) com os canais da lista atual; **▼** abre o menu de baixo (Áudio e legenda · Guia de TV); **CH+/CH−** (e os dígitos) continuam trocando de canal. No guia, OK/toque em um canal troca para ele; **Voltar** fecha só o guia. No celular há o botão **Guia de TV** no menu de baixo. O banner da Início agora ocupa a largura toda (~60% da altura da TV).
+
+## Guia com o player ao lado (v1.31.0)
+
+- **Guia no player (▲):** o vídeo desloca para uma janela no canto superior direito, o detalhe do programa fica ao lado e a grade ocupa o resto; o som não para. No celular em pé, o vídeo fica no topo e a grade embaixo.
+- **Aba Guia (TV ao vivo → Guia de TV):** OK em um canal toca numa janela ao lado (mini player) sem sair do guia; OK de novo no mesmo canal amplia para tela cheia. A grade se ajusta à largura livre (3 h; 2 h quando o mini player ocupa o lado).
+- **Ao vivo não tem mais "Áudio e legenda"** (nem a tecla verde): o menu de baixo traz só "Guia de TV". Filmes e episódios mantêm.
+- O mini player continua sendo o que fica ao voltar para a Início do app (e o Picture-in-Picture ao ir para a tela inicial do celular).

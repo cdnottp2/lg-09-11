@@ -1878,7 +1878,21 @@
   /* ---------- guia de TV (grade por horário) ---------- */
   var gEpg = {};   // id do canal -> { at, list }
   var G = null;
-  var G_WIN = 3 * 3600000, G_PX = 8;   // janela de 3 h, 8 px por minuto
+  var G_PX0 = 8;   // px por minuto quando não dá para medir (testes)
+
+  /* mede a largura disponível: 3 h quando há espaço, senão 2 h (ex.: com o mini player ao lado) */
+  function gMeasure() {
+    var st = G, row = st && st.timeEl && st.timeEl.parentNode, nav = st && st.navEl, rw = row ? row.clientWidth : 0, cw = nav ? nav.offsetWidth : 0;
+    if (!rw || !cw) { st.span = 3 * 3600000; st.px = G_PX0; return; }
+    var gridW = Math.max(240, rw - cw);
+    st.span = gridW >= 1000 ? 3 * 3600000 : 2 * 3600000;
+    st.px = gridW / (st.span / 60000);
+    [].forEach.call(st.body ? st.body.querySelectorAll('.gtrack') : [], function (t) { t.style.width = gridW + 'px'; });
+    st.timeEl.style.width = gridW + 'px';
+    var hrs = st.span / 3600000;
+    if (st.prevBtn) { st.prevBtn.textContent = '‹ ' + hrs + ' h'; st.nextBtn.textContent = hrs + ' h ›'; }
+    st.gridW = gridW;
+  }
 
   function gFloor(t) { return Math.floor(t / 1800000) * 1800000; }
   function gSpan(a, b) { return hhmm(new Date(a)) + ' – ' + hhmm(new Date(b)); }
@@ -1887,7 +1901,7 @@
     var page = host || S.pageEl;
     if (!over) { page.className = 'page scroll guide'; }
     page.innerHTML = '';
-    var st = G = { over: !!over, win: gFloor(Date.now() - 30 * 60000), chans: [], rows: [], queue: [], busy: 0, cat: null, token: S.loadToken, cats: [] };
+    var st = G = { over: !!over, span: 3 * 3600000, px: G_PX0, win: gFloor(Date.now() - 30 * 60000), chans: [], rows: [], queue: [], busy: 0, cat: null, token: S.loadToken, cats: [] };
     st.dChan = h('div', { cls: 'gdchan' }); st.dTitle = h('div', { cls: 'gdtitle', text: 'Guia de TV' });
     st.dBar = h('div', { cls: 'gdfill' }); st.dDesc = h('div', { cls: 'gddesc', text: 'Escolha um programa para ver os detalhes.' });
     page.appendChild(h('div', { cls: 'gdetail' }, [st.dChan, st.dTitle, h('div', { cls: 'gdbar' }, [st.dBar]), st.dDesc]));
@@ -1896,14 +1910,16 @@
     else { page.insertBefore(h('button', { cls: 'f btn gclose', type: 'button', 'data-k': 'g-close', on: { click: closePGuide } }, [icon('back', 24), 'Voltar ao canal']), page.firstChild); }
     st.timeEl = h('div', { cls: 'gtimes' });
     var nav = h('div', { cls: 'gnav' }, [
-      h('button', { cls: 'f btn', type: 'button', text: '‹ 3 h', 'data-k': 'g-prev', on: { click: function () { gShift(-3 * 3600000); } } }),
+      h('button', { cls: 'f btn', type: 'button', text: '‹ 3 h', 'data-k': 'g-prev', on: { click: function () { gShift(-G.span); } } }),
       h('button', { cls: 'f btn', type: 'button', text: 'Agora', 'data-k': 'g-now', on: { click: function () { G.win = gFloor(Date.now() - 30 * 60000); gRepaint(); } } }),
-      h('button', { cls: 'f btn', type: 'button', text: '3 h ›', 'data-k': 'g-next', on: { click: function () { gShift(3 * 3600000); } } })
+      h('button', { cls: 'f btn', type: 'button', text: '3 h ›', 'data-k': 'g-next', on: { click: function () { gShift(G.span); } } })
     ]);
+    st.navEl = nav; st.prevBtn = nav.children[0]; st.nextBtn = nav.children[2];
     page.appendChild(h('div', { cls: 'gtimerow' }, [nav, st.timeEl]));
     st.body = h('div', { cls: 'grows' });
     page.appendChild(st.body);
     page.onscroll = function () { gLoadVisible(); };
+    gMeasure();
     gPaintTimes();
     if (over) {
       // dentro do player: lista do canal atual (±75 canais), o som segue tocando
@@ -1953,7 +1969,13 @@
       if (at >= 0 && at !== S.ctx.idx) { S.ctx.idx = at; playCurrent(); } else { showOsd(); }
       return;
     }
+    // aba Guia: o canal toca numa janela ao lado (mini player); OK de novo no mesmo canal amplia
+    var curCh = S.ctx && S.ctx.kind === 'live' ? S.ctx.list[S.ctx.idx] : null;
+    if (S.mini && curCh && curCh.id === ch.id) { expandPlayer(); return; }
     startPlay({ kind: 'live', list: G.chans, idx: i });
+    S.miniAt = Date.now();
+    leavePlayer(true);
+    setTimeout(function () { if (G && document.body.contains(G.body)) { gRepaint(); } }, 60);
   }
 
   /* guia dentro do player (▲ no canal ao vivo): o vídeo e o som continuam ao fundo */
@@ -1961,6 +1983,8 @@
     if (S.pgOpen || !S.ctx || S.ctx.kind !== 'live') { return; }
     S.pgOpen = true;
     S.pgScope = Nav.getScope();
+    S.pgPrevG = G;
+    $('player').classList.add('pg');
     var el = $('pguide');
     clearTimeout(S.osdTimer);
     $('osd').classList.add('hidden');
@@ -1975,7 +1999,9 @@
     S.pgOpen = false;
     $('pguide').classList.add('hidden');
     $('pguide').innerHTML = '';
-    G = null;
+    $('player').classList.remove('pg');
+    G = S.pgPrevG || null;
+    S.pgPrevG = null;
     Nav.setScope(S.pgScope);
     S.pgScope = null;
   }
@@ -2011,6 +2037,7 @@
       row.el.firstChild._gp = { ch: ch, p: null };
       st.rows.push(row);
       st.body.appendChild(row.el);
+      if (st.gridW) { row.track.style.width = st.gridW + 'px'; }
       gPaintRow(row);
     });
     if (focusIdx >= 0 && st.rows[focusIdx]) {
@@ -2025,13 +2052,13 @@
   function gPaintTimes() {
     var st = G, t;
     st.timeEl.innerHTML = '';
-    for (t = 0; t < G_WIN; t += 1800000) {
-      st.timeEl.appendChild(h('div', { cls: 'gtick', style: 'left:' + (t / 60000 * G_PX) + 'px', text: hhmm(new Date(st.win + t)) }));
+    for (t = 0; t < st.span; t += 1800000) {
+      st.timeEl.appendChild(h('div', { cls: 'gtick', style: 'left:' + (t / 60000 * st.px) + 'px', text: hhmm(new Date(st.win + t)) }));
     }
   }
 
   function gPaintRow(row) {
-    var st = G, tr = row.track, w = G_WIN / 60000 * G_PX, now = Date.now(), c = gEpg[row.ch.id], k, any = false;
+    var st = G, tr = row.track, w = st.span / 60000 * st.px, now = Date.now(), c = gEpg[row.ch.id], k, any = false;
     tr.innerHTML = '';
     function block(left, width, text, sub, p, cls) {
       var el = h('button', { cls: 'f gpr ' + (cls || ''), type: 'button', style: 'left:' + left + 'px;width:' + Math.max(36, width - 4) + 'px', 'data-k': 'gp:' + row.ch.id + ':' + (p ? p.start : 'x'),
@@ -2041,19 +2068,20 @@
     }
     if (!c) { block(0, w, 'Carregando programação…', '', null, 'gwait'); return; }
     c.list.forEach(function (p) {
-      if (p.stop <= st.win || p.start >= st.win + G_WIN) { return; }
-      var l = Math.max(0, (p.start - st.win) / 60000 * G_PX), r = Math.min(w, (p.stop - st.win) / 60000 * G_PX);
+      if (p.stop <= st.win || p.start >= st.win + st.span) { return; }
+      var l = Math.max(0, (p.start - st.win) / 60000 * st.px), r = Math.min(w, (p.stop - st.win) / 60000 * st.px);
       if (r - l < 8) { return; }
       any = true;
       block(l, r - l, p.title, gSpan(p.start, p.stop), p, p.start <= now && p.stop > now ? 'gnow' : (p.stop <= now ? 'gpast' : ''));
     });
     if (!any) { block(0, w, c.list.length ? 'Sem programação neste horário' : 'Sem programação', '', null, 'gwait'); }
-    if (now > st.win && now < st.win + G_WIN) { tr.appendChild(h('div', { cls: 'gnowline', style: 'left:' + ((now - st.win) / 60000 * G_PX) + 'px' })); }
+    if (now > st.win && now < st.win + st.span) { tr.appendChild(h('div', { cls: 'gnowline', style: 'left:' + ((now - st.win) / 60000 * st.px) + 'px' })); }
     k = null;
   }
 
   function gRepaint() {
     var st = G, cur = Nav.current(), key = cur && cur.getAttribute('data-k');
+    gMeasure();
     gPaintTimes();
     st.rows.forEach(function (r) { gPaintRow(r); });
     if (key && /^gp:/.test(key)) {
@@ -2105,7 +2133,7 @@
     if (p) {
       var want = st.win;
       if (p.start < st.win - 1) { want = gFloor(p.start); }
-      else if (p.start >= st.win + G_WIN - 20 * 60000) { want = gFloor(p.start - 30 * 60000); }
+      else if (p.start >= st.win + st.span - 20 * 60000) { want = gFloor(p.start - 30 * 60000); }
       if (want !== st.win) { st.win = want; setTimeout(gRepaint, 0); }
     }
   }
@@ -2586,7 +2614,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.30.1']
+      ['Versão do app', '1.31.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -3178,19 +3206,21 @@
   }
 
   /* menu de baixo do player: [Episódio anterior] [Áudio e legenda] [Próximo episódio]; setas ←/→ escolhem, OK ativa */
+  function osdDefault() { return S.ctx && S.ctx.kind === 'live' ? $('osd-guide') : $('osd-tracks'); }
+
   function osdBtns() {
     return [$('osd-prevep'), $('osd-tracks'), $('osd-guide'), $('osd-nextep')].filter(function (b) { return !b.classList.contains('hidden'); });
   }
 
   function setOsdMenu(on) {
     S.osdMenu = !!on;
-    if (!S.osdSel || S.osdSel.classList.contains('hidden')) { S.osdSel = $('osd-tracks'); }
+    if (!S.osdSel || S.osdSel.classList.contains('hidden')) { S.osdSel = osdDefault(); }
     [$('osd-prevep'), $('osd-tracks'), $('osd-guide'), $('osd-nextep')].forEach(function (b) { b.classList.toggle('focus', !!on && b === S.osdSel); });
   }
 
   function moveOsdSel(d) {
     var bs = osdBtns(), i = bs.indexOf(S.osdSel);
-    if (i < 0) { i = bs.indexOf($('osd-tracks')); }
+    if (i < 0) { i = bs.indexOf(osdDefault()); }
     S.osdSel = bs[Math.max(0, Math.min(bs.length - 1, i + d))];
     showOsd(true);
   }
@@ -3211,7 +3241,7 @@
     if (n < 0 || n >= c.eps.length) { toast(d > 0 ? 'Este é o último episódio' : 'Este é o primeiro episódio', 1800); return; }
     saveResume();
     c.idx = n;
-    S.osdSel = $('osd-tracks');
+    S.osdSel = osdDefault();
     playCurrent(false);
   }
 
@@ -3219,6 +3249,7 @@
     var c = S.ctx, ep = c && c.kind === 'ep', pv = ep && c.idx > 0 ? c.eps[c.idx - 1] : null, nx = ep && c.idx + 1 < c.eps.length ? c.eps[c.idx + 1] : null;
     $('osd').classList.toggle('hasep', !!ep);
     $('osd-guide').classList.toggle('hidden', !(c && c.kind === 'live'));
+    $('osd-tracks').classList.toggle('hidden', !!(c && c.kind === 'live'));
     $('osd-prevep').classList.toggle('hidden', !pv);
     $('osd-nextep').classList.toggle('hidden', !nx);
     if (pv) { $('osd-prevep').lastChild.textContent = 'Anterior · T' + pv.season + ' E' + pv.num; }
@@ -3373,16 +3404,16 @@
     if (live && k >= 48 && k <= 57) { digit(k - 48); return; }
     if (live && k >= 96 && k <= 105) { digit(k - 96); return; }
     switch (k) {
-      case KEY.GREEN: openTracks(); break;
+      case KEY.GREEN: if (!live) { openTracks(); } break;
       case KEY.UP: case KEY.CHUP:
         if (live) { if (k === KEY.UP) { openPGuide(); } else { zap(1); } }   // ▲ abre o guia sem parar o som; CH+/CH− trocam de canal
         else if (k === KEY.CHUP && c.kind === 'ep') { stepEpisode(1); }
-        else { if (!S.osdMenu) { S.osdSel = $('osd-tracks'); } showOsd(true); }   // cima e baixo abrem o menu de baixo
+        else { if (!S.osdMenu) { S.osdSel = osdDefault(); } showOsd(true); }   // cima e baixo abrem o menu de baixo
         break;
       case KEY.DOWN: case KEY.CHDN:
-        if (live) { if (k === KEY.DOWN) { if (!S.osdMenu) { S.osdSel = $('osd-tracks'); } showOsd(true); } else { zap(-1); } }
+        if (live) { if (k === KEY.DOWN) { if (!S.osdMenu) { S.osdSel = osdDefault(); } showOsd(true); } else { zap(-1); } }
         else if (k === KEY.CHDN && c.kind === 'ep') { stepEpisode(-1); }
-        else { if (!S.osdMenu) { S.osdSel = $('osd-tracks'); } showOsd(true); }
+        else { if (!S.osdMenu) { S.osdSel = osdDefault(); } showOsd(true); }
         break;
       case KEY.LEFT:
         if (S.osdMenu && !$('osd').classList.contains('hidden')) { moveOsdSel(-1); } else if (live) { showOsd(); } else { seek(-1); }
