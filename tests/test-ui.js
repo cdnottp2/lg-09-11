@@ -112,6 +112,10 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       assert.ok(/Filme Teste/.test($('.herotitle').textContent), 'banner mostra um destaque do catálogo');
       assert.ok($('.herobtns .btn.primary') && /Assistir/.test($('.herobtns .btn.primary').textContent) && $('.herobtns .btn:not(.primary)'), 'banner com Assistir e Mais informações');
       step('home: banner de destaque');
+      return waitFor(function () { var v = $('.herovid'); return v && v.getAttribute('src'); }, 'prévia muda do banner');
+    }).then(function () {
+      assert.ok(/^http/.test($('.herovid').getAttribute('src')) && $('.herovid').muted, 'prévia começa muda após ~4 s parado no banner');
+      step('banner: prévia muda após alguns segundos');
       assert.ok(!$('.side'), 'sem barra lateral');
       assert.ok(!$('.hub-links') && !$$('.hub-links .btn').length, 'sem botões de atalho embaixo (Buscar/Configurações vão no topo)');
       assert.ok(!$$('.hrow-title').some(function (t) { return t.textContent === 'Favoritos'; }), 'sem favoritos: a fileira não aparece');
@@ -406,12 +410,12 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       assert.ok(/127\.0\.0\.1/.test(txt) && /joao/.test(txt));
       var ver = require('../app/appinfo.json').version;
       assert.ok(txt.indexOf('Versão do app') >= 0 && txt.indexOf(ver) >= 0, 'versão do app em Configurações deve ser a do appinfo.json (' + ver + ')');
-      assert.strictEqual($$('.swrow').length, 3, 'três chaves');
+      assert.strictEqual($$('.swrow').length, 4, 'quatro chaves');
       step('configurações');
       // ocultar SD / HD: a categoria "Filmes e séries 24h" tem Cine HD, Cine SD e Cine FHD
-      $$('.swrow')[1].click(); // SD
-      assert.ok($$('.sw')[1].classList.contains('on'));
-      $$('.swrow')[2].click(); // HD
+      $$('.swrow')[2].click(); // SD
+      assert.ok($$('.sw')[2].classList.contains('on'));
+      $$('.swrow')[3].click(); // HD
       $('.backbtn').click();
       go('live');
       return waitFor(function () { return $$('.cat').length === 4; }, 'ao vivo de novo');
@@ -425,7 +429,7 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       go('settings');
       return waitFor(function () { return $('.settings .sgroup'); }, 'config 2');
     }).then(function () {
-      $$('.swrow')[1].click(); $$('.swrow')[2].click(); // desliga os dois
+      $$('.swrow')[2].click(); $$('.swrow')[3].click(); // desliga os dois
       // cidade do clima
       $('#city').value = 'Campinas';
       $('#city').focus();

@@ -113,3 +113,6 @@ Com um canal ao vivo na tela: **▲** abre o **guia por cima** (o vídeo e o som
 
 ## Animação de abertura (1.32.0)
 Ao abrir o app (e ao trocar de perfil/servidor), o "Conectando…" vira uma animação simples estilo Netflix: o logo (ícone play) aparece com um "pop", o nome **MASTER IPTV** se abre com espaçamento de letras e uma barra de luz percorre abaixo. Dura no mínimo ~1,8 s na abertura; em caso de erro de login a tela sai na hora. Estilos em `#splash` / `.boot*` no `style.css`.
+
+## Prévia no banner (1.33.0)
+Depois de ~4 s parado no banner da Início, toca um trecho mudo do filme (ou do 1º episódio da série), com fade sobre o poster, como a Netflix. Qualquer tecla/toque para a prévia; a rotação do banner pausa enquanto ela toca (máx. 30 s). Só roda em arquivos diretos (mp4/mkv); HLS é ignorado e falhas são silenciosas. Configurações → "Prévia no banner da Início": ligada por padrão na TV e desligada no celular (usa uma conexão do provedor e dados móveis).

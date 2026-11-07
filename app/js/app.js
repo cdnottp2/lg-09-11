@@ -161,6 +161,10 @@
   function initial(it) { return (it.name || '?').charAt(0).toUpperCase(); }
   function metaLine(parts) { return parts.filter(function (x) { return x; }).join('  ·  '); }
   function opt(k) { return !!S.opts[k]; }
+  function pvOn() {
+    if (S.opts.heropv === undefined) { S.opts.heropv = !document.body.classList.contains('touch'); store.set('opts', S.opts); }
+    return !!S.opts.heropv;
+  }
   function setOpt(k, v) { S.opts[k] = !!v; store.set('opts', S.opts); if (k === 'bgplay') { applyBg(); } }
   /* Android (celular): tocar com a tela bloqueada / app em segundo plano (padrão: ligado) */
   function hasBg() { try { return !!(window.NativeApp && window.NativeApp.setBackground && !(window.NativeApp.isTv && window.NativeApp.isTv())); } catch (e) { return false; } }
@@ -2189,7 +2193,10 @@
     var tag = h('div', { cls: 'herotag' }), title = h('div', { cls: 'herotitle' }), meta = h('div', { cls: 'herometa' }), plot = h('div', { cls: 'heroplot' });
     var btns = h('div', { cls: 'herobtns' }), dots = h('div', { cls: 'herodots' });
     var txt = h('div', { cls: 'herotxt' }, [tag, title, meta, plot, btns]);
-    hero.appendChild(bg); hero.appendChild(h('div', { cls: 'herofade' })); hero.appendChild(poster); hero.appendChild(txt); hero.appendChild(dots);
+    var vid = h('video', { cls: 'herovid', muted: 'muted', playsinline: 'playsinline' });
+    vid.muted = true;
+    var pvT = null, pvStop = null, pvBad = {};
+    hero.appendChild(bg); hero.appendChild(vid); hero.appendChild(h('div', { cls: 'herofade' })); hero.appendChild(poster); hero.appendChild(txt); hero.appendChild(dots);
 
     function show(i) {
       if (!slides.length) { return; }
@@ -2212,9 +2219,50 @@
         btns.appendChild(h('button', { cls: 'f btn', type: 'button', text: 'Mais informações', 'data-k': 'hero-info', on: { click: function () { showDetail(it); } } }));
         [].forEach.call(dots.children, function (d, n) { d.classList.toggle('on', n === cur); });
         txt.classList.remove('swap');
+        pvEnd(); pvSchedule();
         if (!heroInfo[key]) { loadInfo(sl, cur); }
       }, 220);
     }
+    /* preview mudo (estilo Netflix): depois de ~4 s parado no banner, toca um trecho do filme/série */
+    function pvAlive() { return hero.parentNode && document.body.contains(hero) && token === S.homeToken; }
+    function pvEnd() {
+      clearTimeout(pvStop);
+      hero.classList.remove('pv');
+      if (vid.getAttribute('src')) { try { vid.pause(); } catch (e) {} vid.removeAttribute('src'); try { vid.load(); } catch (e) {} }
+    }
+    function pvSchedule() {
+      clearTimeout(pvT);
+      if (!pvOn() || !slides.length) { return; }
+      pvT = setTimeout(pvStart, 4000);
+    }
+    function pvStart() {
+      if (!pvAlive()) { pvEnd(); return; }
+      var f = Nav.current(), sl = slides[cur];
+      if (S.mode !== 'browse' || S.mini || document.hidden || !sl || pvBad[sl.it.type + ':' + sl.it.id]) { return; }
+      var key = sl.it.type + ':' + sl.it.id;
+      var go = function (url) {
+        if (!url || /m3u8/i.test(url) || !pvAlive() || slides[cur] !== sl || S.mode !== 'browse') { if (!url || /m3u8/i.test(url)) { pvBad[key] = 1; } return; }
+        var fail = function () { pvBad[key] = 1; pvEnd(); };
+        vid.onerror = fail;
+        vid.onloadedmetadata = function () {
+          try { if (isFinite(vid.duration) && vid.duration > 300) { vid.currentTime = vid.duration * (0.15 + 0.1 * (sl.it.id % 3)); } } catch (e) {}
+        };
+        vid.onplaying = function () { hero.classList.add('pv'); };
+        vid.src = url;
+        var p = vid.play(); if (p && p.catch) { p.catch(function () { fail(); }); }
+        clearTimeout(pvStop);
+        pvStop = setTimeout(function () { if (!hero.classList.contains('pv')) { fail(); } else { pvEnd(); } }, 30000);
+      };
+      if (sl.it.type === 'movie') { go(sl.it.url); return; }
+      S.provider.episodes(sl.it).then(function (r) {
+        var ss = (r && r.seasons) || [], e = ss[0] && ss[0].episodes && ss[0].episodes[0];
+        go(e && e.url);
+      }, function () { pvBad[key] = 1; });
+    }
+    function pvIdle() { pvEnd(); pvSchedule(); }
+    ['keydown', 'touchstart', 'mousedown'].forEach(function (ev) {
+      document.addEventListener(ev, function () { if (pvAlive()) { pvIdle(); } }, true);
+    });
     function paintMeta(it, inf) {
       meta.textContent = metaLine([inf.year || it.year, it.rating ? 'Nota ' + it.rating : '', inf.genre, inf.duration]);
     }
@@ -2243,7 +2291,8 @@
       S.heroTimer = setInterval(function () {
         if (!document.body.contains(hero) || token !== S.homeToken) { clearInterval(S.heroTimer); S.heroTimer = null; return; }
         var f = Nav.current();
-        if (S.mode !== 'browse' || slides.length < 2 || (f && hero.contains(f))) { return; }   // parado enquanto o foco está nos botões
+        if (!pvAlive()) { pvEnd(); }
+        if (S.mode !== 'browse' || slides.length < 2 || (f && hero.contains(f)) || hero.classList.contains('pv')) { return; }   // parado enquanto o foco está nos botões
         show(cur + 1);
       }, 8000);
     }
@@ -2637,7 +2686,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.32.0']
+      ['Versão do app', '1.33.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -2665,6 +2714,8 @@
     page.appendChild(homeStyleBlock());
     page.appendChild(switchRow('Reproduzir o último conteúdo ao abrir o app', 'Ao iniciar, retoma o último canal, filme ou episódio assistido.', 'autoplay'));
     if (hasBg()) { page.appendChild(switchRow('Continuar tocando com a tela bloqueada', 'O áudio segue tocando ao bloquear o celular ou sair do app (aparece uma notificação enquanto toca).', 'bgplay')); }
+    pvOn();
+    page.appendChild(switchRow('Prévia no banner da Início', 'Depois de alguns segundos parado no banner, toca um trecho do filme ou série sem som. Usa uma conexão do seu provedor e dados móveis no celular.', 'heropv'));
     page.appendChild(switchRow('Ocultar canais SD', 'Esconde da lista os canais com "SD" no nome.', 'hideSD'));
     page.appendChild(switchRow('Ocultar canais HD', 'Esconde da lista os canais com "HD" no nome (FHD e 4K continuam).', 'hideHD'));
 
