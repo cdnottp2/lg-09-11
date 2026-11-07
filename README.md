@@ -116,3 +116,6 @@ Ao abrir o app (e ao trocar de perfil/servidor), o "Conectando…" vira uma anim
 
 ## Prévia no banner (1.33.0)
 Depois de ~4 s parado no banner da Início, toca um trecho mudo do filme (ou do 1º episódio da série), com fade sobre o poster, como a Netflix. Qualquer tecla/toque para a prévia; a rotação do banner pausa enquanto ela toca (máx. 30 s). Só roda em arquivos diretos (mp4/mkv); HLS é ignorado e falhas são silenciosas. Configurações → "Prévia no banner da Início": ligada por padrão na TV e desligada no celular (usa uma conexão do provedor e dados móveis).
+
+## Prévia em qualquer card (1.34.0)
+Além do banner, segurar o foco ~2 s num filme/série (cards das listas, fileiras da Início e "Continuar assistindo") toca uma prévia muda dentro do próprio card; em "Continuar assistindo" ela começa no ponto onde você parou. Mover o foco, abrir algo ou sair da Início para a prévia. Se alguma prévia falhar (formato não suportado, servidor recusou), o motivo aparece em Configurações, logo abaixo da chave "Prévia no banner da Início", para diagnosticar na TV.

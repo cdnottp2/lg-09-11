@@ -1595,6 +1595,7 @@
 
   function posterEl(it, withBadge) {
     var poster = h('div', { cls: 'poster' + (it.type === 'live' ? ' live' : '') });
+    poster._it = it;
     poster.appendChild(h('div', { cls: 'ph', text: initial(it) }));
     if (it.logo) { imgEl(it.logo, poster); }
     if (withBadge) { poster.appendChild(h('div', { cls: 'badge', text: typeLabel(it.type) })); }
@@ -1826,6 +1827,7 @@
 
   function contCard(en) {
     var it = en.item, thumb = h('div', { cls: 'thumb' });
+    thumb._it = it; thumb._en = en;
     var img = (en.ep && en.ep.logo) || it.logo;
     if (img) { thumb.style.backgroundImage = bgUrl(img); } else { thumb.appendChild(h('div', { cls: 'ph', text: initial(it) })); }
     var rb = ratingBadge(it);
@@ -2163,6 +2165,69 @@
       else if (p.start >= st.win + st.span - 20 * 60000) { want = gFloor(p.start - 30 * 60000); }
       if (want !== st.win) { st.win = want; setTimeout(gRepaint, 0); }
     }
+  }
+
+  /* ---------- prévia muda ao segurar o foco num filme/série (cards, Continuar assistindo) ---------- */
+  var Prev = { vid: null, host: null, t: null, stopT: null, guard: null };
+
+  function pvStopCard() {
+    clearTimeout(Prev.t); clearTimeout(Prev.stopT); clearInterval(Prev.guard);
+    var v = Prev.vid;
+    if (v) {
+      v.onerror = v.onplaying = v.onloadedmetadata = null;
+      try { v.pause(); } catch (e) {}
+      v.removeAttribute('src');
+      try { v.load(); } catch (e) {}
+      if (v.parentNode) { v.parentNode.removeChild(v); }
+    }
+    if (Prev.host) { Prev.host.classList.remove('pv'); }
+    Prev.vid = null; Prev.host = null;
+  }
+
+  function pvFocus(el) {
+    pvStopCard();
+    if (!pvOn() || S.mode !== 'browse' || S.mini || document.hidden || !S.provider) { return; }
+    var host = el.querySelector && el.querySelector('.poster, .thumb');
+    var it = host && host._it;
+    if (!it || (it.type !== 'movie' && it.type !== 'series')) { return; }
+    Prev.t = setTimeout(function () { if (Nav.current() === el) { pvCardStart(host, it); } }, 2000);
+  }
+
+  function pvCardStart(host, it) {
+    var key = it.type + ':' + it.id, en = host._en;
+    if (S.pvBad && S.pvBad[key]) { return; }
+    S.pvBad = S.pvBad || {};
+    var fail = function (why) { S.pvBad[key] = 1; S.pvLast = it.name + ': ' + why; pvStopCard(); };
+    var go = function (url) {
+      if (Prev.host || S.mode !== 'browse' || !document.body.contains(host)) { return; }
+      if (!url) { fail('sem endereço direto'); return; }
+      if (/m3u8/i.test(url)) { fail('formato HLS (m3u8) não suportado na prévia'); return; }
+      var v = h('video', { cls: 'cardvid', muted: 'muted', playsinline: 'playsinline' });
+      v.muted = true;
+      Prev.vid = v; Prev.host = host;
+      v.onerror = function () { fail('erro do vídeo ' + (v.error ? v.error.code : '?') + ' (' + (String(url).split('?')[0].split('.').pop() || '?').slice(0, 5) + ')'); };
+      v.onloadedmetadata = function () {
+        try {
+          if (en && en.t > 30) { v.currentTime = en.t; }
+          else if (isFinite(v.duration) && v.duration > 300) { v.currentTime = v.duration * (0.15 + 0.1 * (it.id % 3)); }
+        } catch (e) {}
+      };
+      v.onplaying = function () { host.classList.add('pv'); S.pvLast = ''; };
+      host.appendChild(v);
+      v.src = url;
+      var pr = v.play(); if (pr && pr.catch) { pr.catch(function () { fail('reprodução recusada'); }); }
+      Prev.stopT = setTimeout(function () { if (!host.classList.contains('pv')) { fail('não iniciou em 15 s'); } }, 15000);
+      Prev.guard = setInterval(function () {
+        if (S.mode !== 'browse' || S.mini || document.hidden || !document.body.contains(host)) { pvStopCard(); }
+      }, 700);
+      setTimeout(function () { if (Prev.vid === v) { pvStopCard(); } }, 45000);
+    };
+    if (en && en.ep && en.ep.url) { go(en.ep.url); return; }
+    if (it.type === 'movie') { go(it.url); return; }
+    S.provider.episodes(it).then(function (r) {
+      var ss = (r && r.seasons) || [], e = ss[0] && ss[0].episodes && ss[0].episodes[0];
+      go(e && e.url);
+    }, function () { fail('sem resposta do servidor'); });
   }
 
   /* ---------- banner de destaque (Início) ---------- */
@@ -2686,7 +2751,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.33.0']
+      ['Versão do app', '1.34.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -2715,7 +2780,8 @@
     page.appendChild(switchRow('Reproduzir o último conteúdo ao abrir o app', 'Ao iniciar, retoma o último canal, filme ou episódio assistido.', 'autoplay'));
     if (hasBg()) { page.appendChild(switchRow('Continuar tocando com a tela bloqueada', 'O áudio segue tocando ao bloquear o celular ou sair do app (aparece uma notificação enquanto toca).', 'bgplay')); }
     pvOn();
-    page.appendChild(switchRow('Prévia no banner da Início', 'Depois de alguns segundos parado no banner, toca um trecho do filme ou série sem som. Usa uma conexão do seu provedor e dados móveis no celular.', 'heropv'));
+    page.appendChild(switchRow('Prévia no banner da Início', 'Depois de alguns segundos parado no banner, toca um trecho do filme ou série sem som; vale também para os cards das listas e o Continuar assistindo (após ~2 s com o foco no card). Usa uma conexão do seu provedor e dados móveis no celular.', 'heropv'));
+    if (S.pvLast) { page.appendChild(h('div', { cls: 'swd', style: 'margin:-6px 0 14px 4px', text: 'Última prévia que falhou — ' + S.pvLast })); }
     page.appendChild(switchRow('Ocultar canais SD', 'Esconde da lista os canais com "SD" no nome.', 'hideSD'));
     page.appendChild(switchRow('Ocultar canais HD', 'Esconde da lista os canais com "HD" no nome (FHD e 4K continuam).', 'hideHD'));
 
@@ -3626,6 +3692,7 @@
 
     Nav.onFocus(function (el) {
       if (el._gp && G && (G.over || S.section === 'guide')) { gFocus(el._gp); }
+      pvFocus(el);
       var i = el.getAttribute('data-i');
       if (i !== null && S.mode === 'browse' && S.shown < S.items.length && S.shown - parseInt(i, 10) < 14) { renderMore(); }
     });

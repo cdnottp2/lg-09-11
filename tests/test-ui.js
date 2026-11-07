@@ -244,6 +244,13 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
       go('movie');
       return waitFor(function () { return $$('.card').length === 1; }, 'filmes');
     }).then(function () {
+      var cd = $$('.card')[0];
+      w.Nav.focus(cd);
+      return waitFor(function () { return cd.querySelector('.cardvid') && cd.querySelector('.cardvid').getAttribute('src'); }, 'prévia no card').then(function () {
+        w.Nav.focus($$('.f').filter(function (x) { return x !== cd; })[0]);
+        return waitFor(function () { return !cd.querySelector('.cardvid'); }, 'prévia do card para ao mover o foco');
+      }).then(function () { step('card: prévia muda ao segurar o foco, para ao sair'); });
+    }).then(function () {
       // TMDB simulado: elenco do filme e filmografia do ator
       w.localStorage.setItem('iptv.tmdbkey', JSON.stringify('k'));
       w.Tmdb.findId = function () { return Promise.resolve(77); };
