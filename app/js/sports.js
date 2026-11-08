@@ -250,17 +250,26 @@
     return out;
   };
 
-  /* lista de transmissões de um canal (página /streams): [{ id, title, live }] */
+  /* vídeos de uma página do YouTube (busca ou /streams), sem depender do tipo de componente:
+     junta, para cada id de vídeo, os textos próximos (título, canal, "AO VIVO"…). [{ id, text, live }] */
   Sp.parseStreams = function (html) {
     html = String(html || '');
-    var re = /"(?:videoRenderer|gridVideoRenderer)":\{"videoId":"([\w-]{11})"|"contentId":"([\w-]{11})","contentType":"LOCKUP_CONTENT_TYPE_VIDEO"/g, hits = [], m, out = [];
-    while ((m = re.exec(html))) { hits.push({ id: m[1] || m[2], at: m.index }); }
+    var re = /"(?:videoId|contentId)":"([\w-]{11})"/g, hits = [], m, byId = {}, out = [];
+    while ((m = re.exec(html))) {
+      if (!hits.length || hits[hits.length - 1].id !== m[1]) { hits.push({ id: m[1], at: m.index }); }
+    }
     hits.forEach(function (x, i) {
-      var chunk = html.slice(x.at, i + 1 < hits.length ? hits[i + 1].at : x.at + 6000);
-      var t = /"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/.exec(chunk) || /"title":\{"simpleText":"((?:[^"\\]|\\.)*)"/.exec(chunk) || /"title":\{"content":"((?:[^"\\]|\\.)*)"/.exec(chunk);
-      var title = t ? t[1] : '';
-      try { title = JSON.parse('"' + title + '"'); } catch (e) { /* mantém */ }
-      out.push({ id: x.id, title: title, live: /BADGE_STYLE_TYPE_LIVE_NOW|BADGE_STYLE_LIVE|"style":"LIVE"|"iconType":"LIVE"|assistindo agora|"label":"AO VIVO"/i.test(chunk) });
+      var chunk = html.slice(x.at, Math.min(i + 1 < hits.length ? hits[i + 1].at : x.at + 4000, x.at + 4000));
+      var e = byId[x.id];
+      if (!e) { e = byId[x.id] = { id: x.id, raw: '' }; out.push(e); }
+      e.raw += chunk;
+    });
+    out.forEach(function (e) {
+      var texts = [], r = /"(?:text|content|label|simpleText)":"((?:[^"\\]|\\.)*)"/g, t;
+      while ((t = r.exec(e.raw))) { var v = t[1]; try { v = JSON.parse('"' + v + '"'); } catch (er) { /* mantém */ } texts.push(v); }
+      e.text = texts.join(' | ');
+      e.live = /AO VIVO|assistindo agora|assistindo|LIVE_NOW|BADGE_STYLE_LIVE|"style":"LIVE"|"iconType":"LIVE"|watching/i.test(e.raw);
+      delete e.raw;
     });
     return out;
   };
@@ -287,16 +296,31 @@
   function teamWords(name) {
     return Sp.norm(name).split(' ').filter(function (w) { return w.length >= 4 && !GENERIC[w]; });
   }
-  /* entre as transmissões AO VIVO, a que cita um dos times do jogo no título (a de dois times vale mais) */
-  /* pelo feed: vídeo recente (até 48 h) que cita os times; resumos/gols perdem para a transmissão */
-  Sp.pickFeed = function (xml, g, now) {
-    var hw = teamWords(g.home.name), aw = teamWords(g.away.name), best = null, bs = 0;
-    Sp.parseFeed(xml).forEach(function (st) {
-      if (st.at && (st.at < now - 48 * 3600000 || st.at > now + 3600000)) { return; }
-      var t = ' ' + Sp.norm(st.title) + ' ';
+  /* entre as transmissões AO VIVO, a que cita os times do jogo (e, de preferência, é do canal pedido) */
+  Sp.pickLive = function (html, g, chan) {
+    var hw = teamWords(g.home.name), aw = teamWords(g.away.name), cn = chan ? Sp.norm(chan).replace(/ /g, '') : '', best = null, bs = 0;
+    Sp.parseStreams(html).forEach(function (st) {
+      if (!st.live) { return; }
+      var t = ' ' + Sp.norm(st.text) + ' ';
       var has = function (ws) { return ws.some(function (w) { return t.indexOf(' ' + w) >= 0; }); };
       var sc = (has(hw) ? 2 : 0) + (has(aw) ? 2 : 0);
       if (!sc) { return; }
+      if (cn && t.replace(/ /g, '').indexOf(cn) >= 0) { sc += 1; }
+      if (sc > bs) { bs = sc; best = st; }
+    });
+    return best;
+  };
+
+  /* pelo feed: vídeo que cita os times (até 14 dias se citar os dois; até 12 h se citar um); resumos/gols perdem para a transmissão */
+  Sp.pickFeed = function (xml, g, now) {
+    var hw = teamWords(g.home.name), aw = teamWords(g.away.name), best = null, bs = 0;
+    Sp.parseFeed(xml).forEach(function (st) {
+      if (st.at && (st.at < now - 14 * 86400000 || st.at > now + 3600000)) { return; }
+      var t = ' ' + Sp.norm(st.title) + ' ';
+      var has = function (ws) { return ws.some(function (w) { return t.indexOf(' ' + w) >= 0; }); };
+      var sc = (has(hw) ? 2 : 0) + (has(aw) ? 2 : 0);
+      // transmissão pode ser agendada dias antes: se o vídeo é antigo, só vale citando os dois times
+      if (!sc || (sc < 4 && st.at && st.at < now - 12 * 3600000)) { return; }
       if (/melhores momentos|gols |resumo|reapresentacao|replay|bastidores/.test(t)) { sc -= 1; }
       if (/ao vivo/.test(t)) { sc += 1; }
       if (sc > bs || (sc === bs && best && st.at > best.at)) { bs = sc; best = st; }
@@ -304,17 +328,6 @@
     return best;
   };
 
-  Sp.pickLive = function (html, g) {
-    var hw = teamWords(g.home.name), aw = teamWords(g.away.name), best = null, bs = 0;
-    Sp.parseStreams(html).forEach(function (st) {
-      if (!st.live) { return; }
-      var t = ' ' + Sp.norm(st.title) + ' ';
-      var has = function (ws) { return ws.some(function (w) { return t.indexOf(' ' + w) >= 0; }); };
-      var sc = (has(hw) ? 1 : 0) + (has(aw) ? 1 : 0);
-      if (sc > bs) { bs = sc; best = st; }
-    });
-    return best;
-  };
 
   /* ---------- canais: cruza os jogos com a programação ---------- */
 

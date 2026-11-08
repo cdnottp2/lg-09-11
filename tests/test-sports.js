@@ -56,13 +56,16 @@ ok(/Record/.test(Sports.whereToWatch(g).short) && /Prime/.test(Sports.whereToWat
 var ucl = Sports.parseEvent(ev('2026-11-04T20:00Z', 'pre', t('1', 'Real Madrid', 'RMA'), t('2', 'Liverpool', 'LIV'), '0', '0'), 'uefa.champions');
 ok(/HBO Max/.test(Sports.whereToWatch(ucl).short) && Sports.whereToWatch(ucl).lines.length >= 3, 'Champions: HBO Max, TNT e SBT');
 ok(Sports.youtubeLinks(Sports.whereToWatch(g)).some(function (l) { return l.label === 'CazéTV' && /@CazeTV\/live$/.test(l.url); }), 'Corinthians: link do YouTube da CazéTV');
-var ytHtml = '{"a":{"videoRenderer":{"videoId":"AAAAAAAAAAA","title":{"runs":[{"text":"AO VIVO: BRASIL NO ATLETISMO | JOGOS OLÍMPICOS"}]},"thumbnailOverlays":[{"thumbnailOverlayTimeStatusRenderer":{"style":"LIVE"}}]}},'
-  + '"b":{"videoRenderer":{"videoId":"BBBBBBBBBBB","title":{"runs":[{"text":"LIVERPOOL X MANCHESTER UNITED: AO VIVO COM IMAGENS"}]},"thumbnailOverlays":[{"thumbnailOverlayTimeStatusRenderer":{"style":"LIVE"}}]}},'
-  + '"c":{"videoRenderer":{"videoId":"CCCCCCCCCCC","title":{"runs":[{"text":"LIVERPOOL X ARSENAL (semana passada)"}]},"thumbnailOverlays":[{"thumbnailOverlayTimeStatusRenderer":{"style":"DEFAULT"}}]}}}';
+var ytHtml = '{"x":{"videoRenderer":{"videoId":"AAAAAAAAAAA","title":{"runs":[{"text":"AO VIVO: BRASIL NO ATLETISMO"}]},"ownerText":{"runs":[{"text":"CazéTV"}]},"badges":[{"style":"BADGE_STYLE_TYPE_LIVE_NOW"}]}},'
+  + '"y":{"lockupViewModel":{"contentId":"BBBBBBBBBBB","contentType":"LOCKUP_CONTENT_TYPE_VIDEO","metadata":{"title":{"content":"AO VIVO: LIVERPOOL X MANCHESTER UNITED | PREMIER LEAGUE"},"row":{"text":"CazéTV"},"badge":{"text":"AO VIVO"}}}},'
+  + '"z":{"videoRenderer":{"videoId":"CCCCCCCCCCC","title":{"runs":[{"text":"LIVERPOOL X MANCHESTER UNITED Watchalong"}]},"ownerText":{"runs":[{"text":"Overlap Daily"}]},"badges":[{"style":"BADGE_STYLE_TYPE_LIVE_NOW"}]}},'
+  + '"w":{"videoRenderer":{"videoId":"DDDDDDDDDDD","title":{"runs":[{"text":"Liverpool x Arsenal (semana passada)"}]},"ownerText":{"runs":[{"text":"CazéTV"}]}}},'
+  + '"menu":{"watchEndpoint":{"videoId":"BBBBBBBBBBB"}}}';
 var ytG = { home: { name: 'Liverpool' }, away: { name: 'Manchester United' } };
-ok(Sports.parseStreams(ytHtml).length === 3 && Sports.parseStreams(ytHtml)[0].live && !Sports.parseStreams(ytHtml)[2].live, 'lista de transmissões do canal (ao vivo x encerradas)');
-ok(Sports.pickLive(ytHtml, ytG).id === 'BBBBBBBBBBB', 'escolhe a live que cita os times (e não o atletismo)');
-ok(Sports.pickLive(ytHtml, { home: { name: 'Palmeiras' }, away: { name: 'Santos' } }) === null, 'sem jogo no ar: não escolhe outra transmissão');
+ok(Sports.parseStreams(ytHtml).length === 4 && Sports.parseStreams(ytHtml)[0].live && !Sports.parseStreams(ytHtml)[3].live, 'lista de vídeos (qualquer componente): ao vivo x não ao vivo');
+ok(Sports.pickLive(ytHtml, ytG, 'CazéTV').id === 'BBBBBBBBBBB', 'escolhe a live do canal que cita os times (não o atletismo nem o watchalong)');
+ok(Sports.pickLive(ytHtml, ytG, 'Overlap Daily').id === 'CCCCCCCCCCC', 'o canal pedido desempata');
+ok(Sports.pickLive(ytHtml, { home: { name: 'Palmeiras' }, away: { name: 'Santos' } }, 'CazéTV') === null, 'sem jogo no ar: não escolhe outra transmissão');
 var feed = '<feed><entry><yt:videoId>BBBBBBBBBBB</yt:videoId><title>LIVERPOOL x MANCHESTER UNITED &amp; cia - AO VIVO</title><published>' + new Date(Date.now() - 3 * 3600000).toISOString() + '</published></entry>'
   + '<entry><yt:videoId>DDDDDDDDDDD</yt:videoId><title>Liverpool: melhores momentos</title><published>' + new Date(Date.now() - 5 * 3600000).toISOString() + '</published></entry>'
   + '<entry><yt:videoId>EEEEEEEEEEE</yt:videoId><title>Liverpool x Arsenal</title><published>' + new Date(Date.now() - 400 * 3600000).toISOString() + '</published></entry></feed>';

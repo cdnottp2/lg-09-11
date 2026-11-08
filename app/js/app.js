@@ -1139,12 +1139,21 @@
       }, function (e) { diag.push('feed: erro ' + ((e && e.message) || '?')); return null; });
     };
     toast('Procurando o jogo na ' + label + '…', 3000);
-    var first = y.streams ? ytGet(y.streams).then(function (html) {
-      var all = Sports.parseStreams(html), lives = all.filter(function (x) { return x.live; }).length;
-      diag.push('página ' + String(html || '').length + ' B, ' + all.length + ' vídeos, ' + lives + ' ao vivo');
-      return { pick: Sports.pickLive(html, g), cid: y.cid || Sports.channelId(html) };
-    }, function (e) { diag.push('página: erro ' + ((e && e.message) || '?')); return { pick: null, cid: y.cid }; }) : Promise.resolve({ pick: null, cid: y.cid });
-    first.then(function (r) { return r.pick || viaFeed(r.cid); }).then(function (pick) {
+    var cidKnown = y.cid || null;
+    var scan = function (name, url) {
+      return ytGet(url).then(function (html) {
+        var all = Sports.parseStreams(html), lives = all.filter(function (x) { return x.live; }).length;
+        diag.push(name + ' ' + Math.round(String(html || '').length / 1000) + ' KB, ' + all.length + ' vídeos, ' + lives + ' ao vivo');
+        if (!cidKnown) { cidKnown = Sports.channelId(html); }
+        return Sports.pickLive(html, g, label);
+      }, function (e) { diag.push(name + ': erro ' + ((e && e.message) || '?')); return null; });
+    };
+    // 1) busca do YouTube só com transmissões ao vivo (é o que o app do YouTube mostra); 2) lista /streams do canal; 3) feed RSS
+    scan('busca', searchUrl).then(function (pick) {
+      return pick || (y.streams ? scan('canal', y.streams) : null);
+    }).then(function (pick) {
+      return pick || viaFeed(cidKnown);
+    }).then(function (pick) {
       if (pick) { launch(pick.id); return; }
       toast('Não achei ' + g.home.name + ' x ' + g.away.name + ' ao vivo na ' + label + ' agora. (' + diag.join('; ') + ')', 9000);
       launch(null);
@@ -2855,7 +2864,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.36.3']
+      ['Versão do app', '1.36.4']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
