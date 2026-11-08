@@ -2184,20 +2184,29 @@
     Prev.vid = null; Prev.host = null;
   }
 
+  var PD = { foco: 0, agendadas: 0, iniciadas: 0, tocando: 0, bloqueio: '', falha: '', player: '' };
+
   function pvFocus(el) {
     pvStopCard();
-    if (!pvOn() || S.mode !== 'browse' || S.mini || document.hidden || !S.provider) { return; }
     var host = el.querySelector && el.querySelector('.poster, .thumb');
     var it = host && host._it;
     if (!it || (it.type !== 'movie' && it.type !== 'series')) { return; }
+    PD.foco++;
+    if (!pvOn()) { PD.bloqueio = 'chave desligada'; return; }
+    if (S.mode !== 'browse') { PD.bloqueio = 'modo ' + S.mode; return; }
+    if (S.mini) { PD.bloqueio = 'mini player aberto'; return; }
+    if (document.hidden) { PD.bloqueio = 'página oculta'; return; }
+    if (!S.provider) { PD.bloqueio = 'sem provedor'; return; }
+    PD.bloqueio = ''; PD.agendadas++;
     Prev.t = setTimeout(function () { if (Nav.current() === el) { pvCardStart(host, it); } }, 2000);
   }
 
   function pvCardStart(host, it) {
     var key = it.type + ':' + it.id, en = host._en;
-    if (S.pvBad && S.pvBad[key]) { return; }
+    if (S.pvBad && S.pvBad[key]) { PD.bloqueio = 'já falhou antes: ' + it.name; return; }
+    PD.iniciadas++;
     S.pvBad = S.pvBad || {};
-    var fail = function (why) { S.pvBad[key] = 1; S.pvLast = it.name + ': ' + why; pvStopCard(); };
+    var fail = function (why) { S.pvBad[key] = 1; S.pvLast = it.name + ': ' + why; PD.falha = S.pvLast; pvStopCard(); };
     var go = function (url) {
       if (Prev.host || S.mode !== 'browse' || !document.body.contains(host)) { return; }
       if (!url) { fail('sem endereço direto'); return; }
@@ -2212,7 +2221,7 @@
           else if (isFinite(v.duration) && v.duration > 300) { v.currentTime = v.duration * (0.15 + 0.1 * (it.id % 3)); }
         } catch (e) {}
       };
-      v.onplaying = function () { host.classList.add('pv'); S.pvLast = ''; };
+      v.onplaying = function () { host.classList.add('pv'); S.pvLast = ''; PD.tocando++; };
       host.appendChild(v);
       v.src = url;
       var pr = v.play(); if (pr && pr.catch) { pr.catch(function () { fail('reprodução recusada'); }); }
@@ -2303,16 +2312,17 @@
     function pvStart() {
       if (!pvAlive()) { pvEnd(); return; }
       var f = Nav.current(), sl = slides[cur];
+      PD.player = 'banner tentou ' + (++PD.agendadas);
       if (S.mode !== 'browse' || S.mini || document.hidden || !sl || pvBad[sl.it.type + ':' + sl.it.id]) { return; }
       var key = sl.it.type + ':' + sl.it.id;
       var go = function (url) {
         if (!url || /m3u8/i.test(url) || !pvAlive() || slides[cur] !== sl || S.mode !== 'browse') { if (!url || /m3u8/i.test(url)) { pvBad[key] = 1; } return; }
-        var fail = function () { pvBad[key] = 1; pvEnd(); };
+        var fail = function () { pvBad[key] = 1; PD.falha = 'banner: ' + sl.it.name + ' (erro ' + (vid.error ? vid.error.code : '?') + ', ' + (String(url).split('?')[0].split('.').pop() || '?').slice(0, 5) + ')'; pvEnd(); };
         vid.onerror = fail;
         vid.onloadedmetadata = function () {
           try { if (isFinite(vid.duration) && vid.duration > 300) { vid.currentTime = vid.duration * (0.15 + 0.1 * (sl.it.id % 3)); } } catch (e) {}
         };
-        vid.onplaying = function () { hero.classList.add('pv'); };
+        vid.onplaying = function () { hero.classList.add('pv'); PD.tocando++; };
         vid.src = url;
         var p = vid.play(); if (p && p.catch) { p.catch(function () { fail(); }); }
         clearTimeout(pvStop);
@@ -2751,7 +2761,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.34.0']
+      ['Versão do app', '1.34.1']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -2781,7 +2791,7 @@
     if (hasBg()) { page.appendChild(switchRow('Continuar tocando com a tela bloqueada', 'O áudio segue tocando ao bloquear o celular ou sair do app (aparece uma notificação enquanto toca).', 'bgplay')); }
     pvOn();
     page.appendChild(switchRow('Prévia no banner da Início', 'Depois de alguns segundos parado no banner, toca um trecho do filme ou série sem som; vale também para os cards das listas e o Continuar assistindo (após ~2 s com o foco no card). Usa uma conexão do seu provedor e dados móveis no celular.', 'heropv'));
-    if (S.pvLast) { page.appendChild(h('div', { cls: 'swd', style: 'margin:-6px 0 14px 4px', text: 'Última prévia que falhou — ' + S.pvLast })); }
+    page.appendChild(h('div', { cls: 'swd', style: 'margin:-6px 0 14px 4px', text: 'Diagnóstico da prévia — foco em filmes/séries: ' + PD.foco + ' · agendadas: ' + PD.agendadas + ' · iniciadas: ' + PD.iniciadas + ' · tocando: ' + PD.tocando + (PD.bloqueio ? ' · bloqueio: ' + PD.bloqueio : '') + (PD.falha ? ' · última falha: ' + PD.falha : '') }));
     page.appendChild(switchRow('Ocultar canais SD', 'Esconde da lista os canais com "SD" no nome.', 'hideSD'));
     page.appendChild(switchRow('Ocultar canais HD', 'Esconde da lista os canais com "HD" no nome (FHD e 4K continuam).', 'hideHD'));
 

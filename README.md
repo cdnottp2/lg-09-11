@@ -119,3 +119,6 @@ Depois de ~4 s parado no banner da Início, toca um trecho mudo do filme (ou do 
 
 ## Prévia em qualquer card (1.34.0)
 Além do banner, segurar o foco ~2 s num filme/série (cards das listas, fileiras da Início e "Continuar assistindo") toca uma prévia muda dentro do próprio card; em "Continuar assistindo" ela começa no ponto onde você parou. Mover o foco, abrir algo ou sair da Início para a prévia. Se alguma prévia falhar (formato não suportado, servidor recusou), o motivo aparece em Configurações, logo abaixo da chave "Prévia no banner da Início", para diagnosticar na TV.
+
+## Diagnóstico da prévia (1.34.1)
+Configurações mostra sempre uma linha "Diagnóstico da prévia" com contadores (foco em filmes/séries, agendadas, iniciadas, tocando) e o último bloqueio ou falha, para descobrir em que etapa a prévia para na TV.
