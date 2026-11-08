@@ -162,3 +162,9 @@ No teste real a página (562 KB) foi lida mas nenhum vídeo foi reconhecido: o Y
 ## Só canal oficial + aviso de gols (1.37.0)
 - **Canal oficial:** o botão do YouTube só aceita transmissão cujo canal seja o da fonte (CazéTV, TNT Sports, ge tv, SportyNet); reações e watchalongs de outros canais são ignorados. A busca inclui o nome do canal. Se o jogo não está no ar, abre a página do canal (Android) ou o app do YouTube (LG), nunca uma busca geral.
 - **Aviso de gols:** pop-up no topo (7 s, sem tirar o foco) com o placar, o time que marcou, o minuto e o autor quando a fonte informa. Vale enquanto o app está aberto (inclusive no player). Configurações → "Aviso de gols": *Todos os jogos ao vivo* (padrão), *Meus times e Brasil* ou *Desligado*. Consulta os placares a cada 45 s só das ligas com jogo ao vivo (varredura completa a cada 5 min); o primeiro placar visto de cada jogo não gera aviso.
+
+## Canais do jogo: recheca programação velha (1.37.1)
+A programação de cada canal fica guardada por horas; se o provedor só atualiza o título do jogo mais tarde (ex.: "Futebol" → "Vasco x Palmeiras"), o app seguia usando a versão antiga e dizia que nenhum canal passava o jogo. Agora, quando um jogo ao vivo (ou que começa em até 2 h) fica sem canal, o app refaz a consulta dos canais principais (Premiere, SporTV, ESPN, TNT, CazéTV, Globo…) ignorando o que estava guardado, e só então conclui. Na tela do jogo, sem canal, há o botão **Procurar canais de novo**, que refaz tudo do zero.
+
+## Canais do jogo não se perdem mais por falha do provedor (1.37.2)
+A varredura de canais (até 160 consultas de programação) trocava o resultado anterior pelo novo; se o provedor falhasse ou demorasse em alguns canais, a falha era guardada como "canal sem programação" e o jogo perdia o canal que já tinha sido achado. Agora, falha de consulta não sobrescreve a programação guardada e, se o canal falhou nesta rodada, o link que já existia para o jogo é mantido.

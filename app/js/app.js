@@ -832,8 +832,8 @@
   }
 
   /* procura, na programação dos seus canais, qual deles passa cada jogo (ao vivo ou nas próximas 12 h) */
-  function spScan(force) {
-    var sp = S.sp, now = Date.now(), token = S.loadToken;
+  function spScan(force, nocache) {
+    var sp = S.sp, now = Date.now(), token = S.loadToken, failedEpg = {};
     if (!S.provider || !S.provider.hasEpg || sp.scanning) { return; }
     if (!force && sp.chanAt && now - sp.chanAt < 300000) { return; }
     var fol = spFollow();
@@ -846,7 +846,7 @@
     Promise.all([S.provider.categories('live'), S.provider.all('live')]).then(function (r) {
       var PRI = /premiere|sportv|espn|tnt|caz[eé]|globo|max|sbt|record|band/i;
       var cands = Sports.candidateChannels(filterLive(r[1]), r[0], 160).sort(function (a, b) { return (PRI.test(b.name) ? 1 : 0) - (PRI.test(a.name) ? 1 : 0); });
-      var progs = {}, i = 0, busy = 0, done = 0;
+      var progs = {}, i = 0, busy = 0, done = 0, finishing = false;
       sp.prog = { done: 0, total: cands.length };
       return new Promise(function (resolve) {
         function pump() {
@@ -854,11 +854,12 @@
           while (busy < 8 && i < cands.length) {
             (function (ch) {
               var c = spEpg[ch.id];
-              if (spEpgFresh(c)) { progs[ch.id] = c.list; return; }
+              if (!nocache && spEpgFresh(c)) { progs[ch.id] = c.list; return; }
               busy++;
-              S.provider.epg(ch, 12).then(function (list) { return list; }, function () { return []; }).then(function (list) {
-                spEpg[ch.id] = { at: Date.now(), list: list };
-                progs[ch.id] = list;
+              S.provider.epg(ch, 12).then(function (list) { return list; }, function () { return null; }).then(function (list) {
+                if (list) { spEpg[ch.id] = { at: Date.now(), list: list }; progs[ch.id] = list; }
+                else { failedEpg[ch.id] = 1; progs[ch.id] = spEpg[ch.id] ? spEpg[ch.id].list : []; }   // falha do provedor: não vira "sem programação"
+
                 busy--;
                 done++;
                 sp.prog.done = done;
@@ -867,7 +868,8 @@
               });
             })(cands[i++]);
           }
-          if (busy === 0 && i >= cands.length) {
+          if (busy === 0 && i >= cands.length && !finishing) {
+            finishing = true;
             // canais Premiere sem guia (ou sem jogo identificado nele): palpite para jogos do Brasileirão que não acharam canal
             var VS = / (x|vs\.?|v) /i;
             sp.noguide = filterLive(r[1]).filter(function (ch) {
@@ -875,14 +877,44 @@
               var l = progs[ch.id];
               return !ch.epgId || !l || !l.length || !l.some(function (e) { return VS.test(' ' + (e.title || '') + ' '); });
             }).slice(0, 12);
-            resolve(Sports.assign(want, cands, progs));
+            var res = Sports.assign(want, cands, progs);
+            // jogo no ar (ou quase) sem canal: a programação guardada pode estar velha (o provedor atualiza o título depois);
+            // rechecar os canais principais sem usar o que está guardado
+            var nowT = Date.now();
+            var missing = want.filter(function (g) { return !res[spGame(g)] && (g.state === 'in' || g.start - nowT < 2 * 3600000); });
+            var stale = missing.length && !nocache ? cands.filter(function (ch) { return PRI.test(ch.name) && !(spEpg[ch.id] && nowT - spEpg[ch.id].at < 480000); }).slice(0, 50) : [];
+            if (!stale.length) { resolve(res); return; }
+            var k = 0, bz = 0;
+            (function again() {
+              if (token !== S.loadToken) { resolve(null); return; }
+              while (bz < 8 && k < stale.length) {
+                (function (ch) {
+                  bz++;
+                  S.provider.epg(ch, 12).then(function (list) { return list; }, function () { return null; }).then(function (list) {
+                    if (list) { spEpg[ch.id] = { at: Date.now(), list: list }; progs[ch.id] = list; delete failedEpg[ch.id]; }
+                    bz--; again();
+                  });
+                })(stale[k++]);
+              }
+              if (bz === 0 && k >= stale.length) { resolve(Sports.assign(want, cands, progs)); }
+            })();
           }
         }
         pump();
       });
     }).then(function (res) {
       sp.scanning = false;
-      if (res) { sp.chan = res; sp.chanAt = Date.now(); spPersist(); }
+      if (res) {
+        // canal cuja consulta falhou agora: mantém o que já tinha sido achado para ele (não perde o link por falha do provedor)
+        var prev = sp.chan || {};
+        want.forEach(function (g) {
+          var k = spGame(g), cur = res[k] || [], have = {};
+          cur.forEach(function (x) { have[x.ch.id] = 1; });
+          var add = (prev[k] || []).filter(function (x) { return !have[x.ch.id] && failedEpg[x.ch.id]; });
+          if (add.length) { res[k] = cur.concat(add); }
+        });
+        sp.chan = res; sp.chanAt = Date.now(); spPersist();
+      }
       if (token === S.loadToken && S.section === 'sports') { paintSports(); }
     }, function () { sp.scanning = false; sp.chanAt = Date.now(); });
   }
@@ -1069,6 +1101,9 @@
         return h('button', { cls: 'f btn spplay', type: 'button', 'data-k': 'p:' + i, on: { click: function () { spPlay(g, i); } } }, [icon('play', 22), ch.name, h('small', { text: 'sem guia' })]);
       })));
     } else {
+      if (S.provider && S.provider.hasEpg && !sp.scanning && g.state !== 'post') {
+        body.appendChild(h('div', { cls: 'spwatch' }, [h('button', { cls: 'f btn', type: 'button', 'data-k': 'rescan', on: { click: function () { toast('Procurando de novo nos seus canais…', 2500); spScan(true, true); } } }, [icon('search', 22), 'Procurar canais de novo'])]));
+      }
       body.appendChild(h('div', { cls: 'spnote small', text: !S.provider || !S.provider.hasEpg ? 'Este servidor não tem guia de programação.' : (sp.scanning ? 'Procurando nos seus canais…' + (sp.prog && sp.prog.total ? ' (' + sp.prog.done + ' de ' + sp.prog.total + ')' : '') : 'Nenhum dos seus canais parece passar este jogo agora (ou o provedor escreve os nomes de outro jeito).') }));
     }
     var wr = Sports.whereToWatch(g);
@@ -2926,7 +2961,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.37.0']
+      ['Versão do app', '1.37.2']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
