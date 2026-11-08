@@ -122,3 +122,6 @@ Além do banner, segurar o foco ~2 s num filme/série (cards das listas, fileira
 
 ## Diagnóstico da prévia (1.34.1)
 Configurações mostra sempre uma linha "Diagnóstico da prévia" com contadores (foco em filmes/séries, agendadas, iniciadas, tocando) e o último bloqueio ou falha, para descobrir em que etapa a prévia para na TV.
+
+## Prévia: rastreio de eventos (1.34.2)
+A prévia agora começa do início do vídeo e só pula para o meio depois de já estar tocando (o pulo antes disso podia travar em servidores sem suporte a Range). As falhas no diagnóstico trazem os eventos do vídeo (loadstart, loadedmetadata, canplay, stalled… com o tempo em segundos), `readyState`/`networkState` e o motivo do play recusado.

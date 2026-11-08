@@ -2186,6 +2186,24 @@
 
   var PD = { foco: 0, agendadas: 0, iniciadas: 0, tocando: 0, bloqueio: '', falha: '', player: '' };
 
+  function pvTrace(v) {
+    var t0 = Date.now(), log = [];
+    ['loadstart', 'loadedmetadata', 'loadeddata', 'canplay', 'playing', 'waiting', 'stalled', 'suspend', 'seeking', 'seeked', 'abort', 'emptied', 'error'].forEach(function (n) {
+      v.addEventListener(n, function () { log.push(n + '@' + (Math.round((Date.now() - t0) / 100) / 10)); });
+    });
+    return function () { return '[' + log.slice(-8).join(' ') + ' rs' + v.readyState + ' ns' + v.networkState + ']'; };
+  }
+  function pvSkip(v, it, en) {   // só depois de já estar tocando: pula para um trecho do meio
+    var done = false;
+    v.addEventListener('playing', function () {
+      if (done) { return; } done = true;
+      try {
+        if (en && en.t > 30) { v.currentTime = en.t; }
+        else if (isFinite(v.duration) && v.duration > 300) { v.currentTime = v.duration * (0.15 + 0.1 * (it.id % 3)); }
+      } catch (e) {}
+    });
+  }
+
   function pvFocus(el) {
     pvStopCard();
     var host = el.querySelector && el.querySelector('.poster, .thumb');
@@ -2214,18 +2232,14 @@
       var v = h('video', { cls: 'cardvid', muted: 'muted', playsinline: 'playsinline' });
       v.muted = true;
       Prev.vid = v; Prev.host = host;
-      v.onerror = function () { fail('erro do vídeo ' + (v.error ? v.error.code : '?') + ' (' + (String(url).split('?')[0].split('.').pop() || '?').slice(0, 5) + ')'); };
-      v.onloadedmetadata = function () {
-        try {
-          if (en && en.t > 30) { v.currentTime = en.t; }
-          else if (isFinite(v.duration) && v.duration > 300) { v.currentTime = v.duration * (0.15 + 0.1 * (it.id % 3)); }
-        } catch (e) {}
-      };
+      var tr = pvTrace(v), ext = (String(url).split('?')[0].split('.').pop() || '?').slice(0, 5);
+      v.onerror = function () { fail('erro do vídeo ' + (v.error ? v.error.code : '?') + ' (' + ext + ') ' + tr()); };
+      pvSkip(v, it, en);
       v.onplaying = function () { host.classList.add('pv'); S.pvLast = ''; PD.tocando++; };
       host.appendChild(v);
       v.src = url;
-      var pr = v.play(); if (pr && pr.catch) { pr.catch(function () { fail('reprodução recusada'); }); }
-      Prev.stopT = setTimeout(function () { if (!host.classList.contains('pv')) { fail('não iniciou em 15 s'); } }, 15000);
+      var pr = v.play(); if (pr && pr.catch) { pr.catch(function (e) { fail('play recusado ' + (e && e.name) + ' ' + tr()); }); }
+      Prev.stopT = setTimeout(function () { if (!host.classList.contains('pv')) { fail('não iniciou em 20 s (' + ext + ') ' + tr()); } }, 20000);
       Prev.guard = setInterval(function () {
         if (S.mode !== 'browse' || S.mini || document.hidden || !document.body.contains(host)) { pvStopCard(); }
       }, 700);
@@ -2317,16 +2331,22 @@
       var key = sl.it.type + ':' + sl.it.id;
       var go = function (url) {
         if (!url || /m3u8/i.test(url) || !pvAlive() || slides[cur] !== sl || S.mode !== 'browse') { if (!url || /m3u8/i.test(url)) { pvBad[key] = 1; } return; }
-        var fail = function () { pvBad[key] = 1; PD.falha = 'banner: ' + sl.it.name + ' (erro ' + (vid.error ? vid.error.code : '?') + ', ' + (String(url).split('?')[0].split('.').pop() || '?').slice(0, 5) + ')'; pvEnd(); };
-        vid.onerror = fail;
-        vid.onloadedmetadata = function () {
-          try { if (isFinite(vid.duration) && vid.duration > 300) { vid.currentTime = vid.duration * (0.15 + 0.1 * (sl.it.id % 3)); } } catch (e) {}
-        };
+        var tr = pvTrace(vid), ext = (String(url).split('?')[0].split('.').pop() || '?').slice(0, 5);
+        var fail = function (why) { pvBad[key] = 1; PD.falha = 'banner ' + sl.it.name + ': ' + (why || 'erro ' + (vid.error ? vid.error.code : '?')) + ' (' + ext + ') ' + tr(); pvEnd(); };
+        vid.onerror = function () { fail(); };
+        vid._sl = sl; vid._skipDone = null;
+        if (!vid._skipSet) {
+          vid._skipSet = 1;
+          vid.addEventListener('playing', function () {
+            var c = vid._sl; if (!c || vid._skipDone === c) { return; } vid._skipDone = c;
+            try { if (isFinite(vid.duration) && vid.duration > 300) { vid.currentTime = vid.duration * (0.15 + 0.1 * (c.it.id % 3)); } } catch (e) {}
+          });
+        }
         vid.onplaying = function () { hero.classList.add('pv'); PD.tocando++; };
         vid.src = url;
-        var p = vid.play(); if (p && p.catch) { p.catch(function () { fail(); }); }
+        var p = vid.play(); if (p && p.catch) { p.catch(function (e) { fail('play recusado ' + (e && e.name)); }); }
         clearTimeout(pvStop);
-        pvStop = setTimeout(function () { if (!hero.classList.contains('pv')) { fail(); } else { pvEnd(); } }, 30000);
+        pvStop = setTimeout(function () { if (!hero.classList.contains('pv')) { fail('não iniciou em 20 s'); } else { pvEnd(); } }, 30000);
       };
       if (sl.it.type === 'movie') { go(sl.it.url); return; }
       S.provider.episodes(sl.it).then(function (r) {
@@ -2761,7 +2781,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.34.1']
+      ['Versão do app', '1.34.2']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
