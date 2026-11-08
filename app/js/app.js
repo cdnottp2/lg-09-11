@@ -2173,6 +2173,7 @@
   function pvStopCard() {
     clearTimeout(Prev.t); clearTimeout(Prev.stopT); clearInterval(Prev.guard);
     var v = Prev.vid;
+    if (v && Prev.tr && Prev.host && !Prev.host.classList.contains('pv') && Prev.tr.age() > 3000) { PD.ultima = 'card interrompido (' + Prev.nm + ') ' + Prev.tr(); }
     if (v) {
       v.onerror = v.onplaying = v.onloadedmetadata = null;
       try { v.pause(); } catch (e) {}
@@ -2184,14 +2185,16 @@
     Prev.vid = null; Prev.host = null;
   }
 
-  var PD = { foco: 0, agendadas: 0, iniciadas: 0, tocando: 0, bloqueio: '', falha: '', player: '' };
+  var PD = { ultima: '', foco: 0, agendadas: 0, iniciadas: 0, tocando: 0, bloqueio: '', falha: '', player: '' };
 
   function pvTrace(v) {
     var t0 = Date.now(), log = [];
     ['loadstart', 'loadedmetadata', 'loadeddata', 'canplay', 'playing', 'waiting', 'stalled', 'suspend', 'seeking', 'seeked', 'abort', 'emptied', 'error'].forEach(function (n) {
       v.addEventListener(n, function () { log.push(n + '@' + (Math.round((Date.now() - t0) / 100) / 10)); });
     });
-    return function () { return '[' + log.slice(-8).join(' ') + ' rs' + v.readyState + ' ns' + v.networkState + ']'; };
+    var f = function () { return '[t+' + Math.round((Date.now() - t0) / 1000) + 's ' + log.slice(-8).join(' ') + ' rs' + v.readyState + ' ns' + v.networkState + ']'; };
+    f.age = function () { return Date.now() - t0; };
+    return f;
   }
   function pvSkip(v, it, en) {   // só depois de já estar tocando: pula para um trecho do meio
     var done = false;
@@ -2233,12 +2236,13 @@
       v.muted = true;
       Prev.vid = v; Prev.host = host;
       var tr = pvTrace(v), ext = (String(url).split('?')[0].split('.').pop() || '?').slice(0, 5);
+      Prev.tr = tr; Prev.nm = it.name;
       v.onerror = function () { fail('erro do vídeo ' + (v.error ? v.error.code : '?') + ' (' + ext + ') ' + tr()); };
       pvSkip(v, it, en);
       v.onplaying = function () { host.classList.add('pv'); S.pvLast = ''; PD.tocando++; };
       host.appendChild(v);
       v.src = url;
-      var pr = v.play(); if (pr && pr.catch) { pr.catch(function (e) { fail('play recusado ' + (e && e.name) + ' ' + tr()); }); }
+      var pr = v.play(); if (pr && pr.catch) { pr.catch(function (e) { if (Prev.vid !== v) { return; } fail('play recusado ' + (e && e.name) + ' ' + tr()); }); }
       Prev.stopT = setTimeout(function () { if (!host.classList.contains('pv')) { fail('não iniciou em 20 s (' + ext + ') ' + tr()); } }, 20000);
       Prev.guard = setInterval(function () {
         if (S.mode !== 'browse' || S.mini || document.hidden || !document.body.contains(host)) { pvStopCard(); }
@@ -2315,6 +2319,8 @@
     function pvAlive() { return hero.parentNode && document.body.contains(hero) && token === S.homeToken; }
     function pvEnd() {
       clearTimeout(pvStop);
+      if (vid._tr && vid.getAttribute('src') && !hero.classList.contains('pv') && vid._tr.age() > 3000) { PD.ultima = 'banner interrompido ' + vid._tr(); }
+      vid._gen = (vid._gen || 0) + 1;
       hero.classList.remove('pv');
       if (vid.getAttribute('src')) { try { vid.pause(); } catch (e) {} vid.removeAttribute('src'); try { vid.load(); } catch (e) {} }
     }
@@ -2331,7 +2337,8 @@
       var key = sl.it.type + ':' + sl.it.id;
       var go = function (url) {
         if (!url || /m3u8/i.test(url) || !pvAlive() || slides[cur] !== sl || S.mode !== 'browse') { if (!url || /m3u8/i.test(url)) { pvBad[key] = 1; } return; }
-        var tr = pvTrace(vid), ext = (String(url).split('?')[0].split('.').pop() || '?').slice(0, 5);
+        var gen = vid._gen = (vid._gen || 0) + 1;
+        var tr = vid._tr = pvTrace(vid), ext = (String(url).split('?')[0].split('.').pop() || '?').slice(0, 5);
         var fail = function (why) { pvBad[key] = 1; PD.falha = 'banner ' + sl.it.name + ': ' + (why || 'erro ' + (vid.error ? vid.error.code : '?')) + ' (' + ext + ') ' + tr(); pvEnd(); };
         vid.onerror = function () { fail(); };
         vid._sl = sl; vid._skipDone = null;
@@ -2344,7 +2351,7 @@
         }
         vid.onplaying = function () { hero.classList.add('pv'); PD.tocando++; };
         vid.src = url;
-        var p = vid.play(); if (p && p.catch) { p.catch(function (e) { fail('play recusado ' + (e && e.name)); }); }
+        var p = vid.play(); if (p && p.catch) { p.catch(function (e) { if (vid._gen !== gen) { return; } fail('play recusado ' + (e && e.name)); }); }
         clearTimeout(pvStop);
         pvStop = setTimeout(function () { if (!hero.classList.contains('pv')) { fail('não iniciou em 20 s'); } else { pvEnd(); } }, 30000);
       };
@@ -2781,7 +2788,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.34.2']
+      ['Versão do app', '1.34.3']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -2811,7 +2818,11 @@
     if (hasBg()) { page.appendChild(switchRow('Continuar tocando com a tela bloqueada', 'O áudio segue tocando ao bloquear o celular ou sair do app (aparece uma notificação enquanto toca).', 'bgplay')); }
     pvOn();
     page.appendChild(switchRow('Prévia no banner da Início', 'Depois de alguns segundos parado no banner, toca um trecho do filme ou série sem som; vale também para os cards das listas e o Continuar assistindo (após ~2 s com o foco no card). Usa uma conexão do seu provedor e dados móveis no celular.', 'heropv'));
-    page.appendChild(h('div', { cls: 'swd', style: 'margin:-6px 0 14px 4px', text: 'Diagnóstico da prévia — foco em filmes/séries: ' + PD.foco + ' · agendadas: ' + PD.agendadas + ' · iniciadas: ' + PD.iniciadas + ' · tocando: ' + PD.tocando + (PD.bloqueio ? ' · bloqueio: ' + PD.bloqueio : '') + (PD.falha ? ' · última falha: ' + PD.falha : '') }));
+    [
+      'Diagnóstico da prévia — foco em filmes/séries: ' + PD.foco + ' · agendadas: ' + PD.agendadas + ' · iniciadas: ' + PD.iniciadas + ' · tocando: ' + PD.tocando + (PD.bloqueio ? ' · bloqueio: ' + PD.bloqueio : ''),
+      PD.falha ? 'Última falha: ' + PD.falha : '',
+      PD.ultima ? 'Interrompida: ' + PD.ultima : ''
+    ].forEach(function (t) { if (t) { page.appendChild(h('div', { cls: 'swd', style: 'margin:-6px 40px 10px 4px;white-space:normal;word-break:break-word;max-width:1500px', text: t })); } });
     page.appendChild(switchRow('Ocultar canais SD', 'Esconde da lista os canais com "SD" no nome.', 'hideSD'));
     page.appendChild(switchRow('Ocultar canais HD', 'Esconde da lista os canais com "HD" no nome (FHD e 4K continuam).', 'hideHD'));
 

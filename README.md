@@ -125,3 +125,6 @@ Configurações mostra sempre uma linha "Diagnóstico da prévia" com contadores
 
 ## Prévia: rastreio de eventos (1.34.2)
 A prévia agora começa do início do vídeo e só pula para o meio depois de já estar tocando (o pulo antes disso podia travar em servidores sem suporte a Range). As falhas no diagnóstico trazem os eventos do vídeo (loadstart, loadedmetadata, canplay, stalled… com o tempo em segundos), `readyState`/`networkState` e o motivo do play recusado.
+
+## Prévia: interrupção x falha (1.34.3)
+Cancelar a prévia (tecla, troca de slide) não conta mais como falha ("AbortError" era causado pelo próprio app). O diagnóstico agora tem 3 linhas: contadores, última falha real e "Interrompida", com o tempo (t+Ns) e os eventos do vídeo até o cancelamento, para ver se o servidor demora a responder.
