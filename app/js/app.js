@@ -1078,11 +1078,39 @@
         h('div', { cls: 'spnote small', text: 'Serviços como HBO Max, Paramount+, Prime Video e YouTube não têm guia de programação no seu servidor, por isso não viram botão de canal. Direitos conforme a imprensa (nov/2026); podem variar por jogo.' })
       ])));
     }
+    var yts = wr ? Sports.youtubeLinks(wr) : [];
+    if (yts.length) {
+      body.appendChild(h('div', { cls: 'spwatch' }, yts.map(function (y) {
+        return h('button', { cls: 'f btn primary', type: 'button', 'data-k': 'yt:' + y.label, on: { click: function () { openYouTube(y.url, y.label); } } },
+          [icon('play', 22), 'Abrir ' + y.label + ' no YouTube']);
+      })));
+    }
     body.appendChild(h('div', { cls: 'spwatch' }, [g.home, g.away].map(function (t) {
       var on = !!fol[t.id];
       return h('button', { cls: 'f btn', type: 'button', 'data-k': 'f:' + t.id, on: { click: function () { spToggleFollow(t); paintSports(); } } },
         [icon(on ? 'starfill' : 'star', 22), (on ? 'Seguindo ' : 'Seguir ') + t.name]);
     })));
+  }
+
+  /* abre um link fora do app: Android (app do YouTube) e webOS (app YouTube da TV) */
+  function openYouTube(url, label) {
+    if (window.NativeApp && window.NativeApp.openUrl) {
+      try { if (window.NativeApp.openUrl(url)) { return; } } catch (e) {}
+      toast('Não consegui abrir o YouTube. Procure por ' + label + ' lá.', 4000);
+      return;
+    }
+    if (window.PalmServiceBridge) {
+      try {
+        var b = new window.PalmServiceBridge();
+        b.onservicecallback = function (msg) {
+          var r = {}; try { r = JSON.parse(msg); } catch (e) {}
+          if (!r.returnValue) { toast('Abra o app YouTube da TV e procure por ' + label + '.', 5000); }
+        };
+        b.call('luna://com.webos.applicationManager/launch', JSON.stringify({ id: 'youtube.leanback.v4', params: { contentTarget: url } }));
+        return;
+      } catch (e) {}
+    }
+    toast('Abra o YouTube e procure por ' + label + '.', 5000);
   }
 
   function spInit() {
@@ -2789,7 +2817,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.34.4']
+      ['Versão do app', '1.35.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {

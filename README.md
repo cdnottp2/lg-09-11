@@ -131,3 +131,6 @@ Cancelar a prévia (tecla, troca de slide) não conta mais como falha ("AbortErr
 
 ## Prévia de vídeo: experimental e desligada (1.34.4)
 Na LG real a prévia carrega só às vezes (servidor lento / play cortado) e deixa o app mais pesado, então virou "Prévia de vídeo (experimental)" em Configurações, **desligada por padrão** (a 1.34.4 desliga também em quem já tinha ligada). O diagnóstico só aparece com a chave ligada.
+
+## Abrir no YouTube (1.35.0)
+Em "Onde assistir" de um jogo, quando a fonte transmite no YouTube (CazéTV, TNT Sports, ge tv, SportyNet) aparece o botão **Abrir … no YouTube**. Android (celular e TV): abre o app do YouTube (`NativeApp.openUrl`, só aceita endereços do youtube.com). CazéTV vai direto para `@CazeTV/live`; as demais abrem a busca de transmissões ao vivo. webOS: pede à TV para abrir o app `youtube.leanback.v4` com o endereço; se a TV recusar, mostra um aviso para procurar o canal lá.

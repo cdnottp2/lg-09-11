@@ -234,6 +234,19 @@
     return RIGHTS[g.league] || null;
   };
 
+  /* links do YouTube para as fontes que transmitem lá (abre o app do YouTube) */
+  var YT = [
+    { re: /Caz[eé]TV/, label: 'CazéTV', url: 'https://www.youtube.com/@CazeTV/live' },
+    { re: /TNT Sports/, label: 'TNT Sports', url: 'https://www.youtube.com/results?search_query=TNT+Sports+Brasil+ao+vivo&sp=EgJAAQ%253D%253D' },
+    { re: /ge tv/i, label: 'ge tv', url: 'https://www.youtube.com/results?search_query=ge+tv+ao+vivo&sp=EgJAAQ%253D%253D' },
+    { re: /SportyNet/, label: 'SportyNet', url: 'https://www.youtube.com/results?search_query=SportyNet+ao+vivo&sp=EgJAAQ%253D%253D' }
+  ];
+  Sp.youtubeLinks = function (wr) {
+    var txt = wr && wr.lines ? wr.lines.join('\n') : '', out = [];
+    YT.forEach(function (y) { if (y.re.test(txt)) { out.push({ label: y.label, url: y.url }); } });
+    return out;
+  };
+
   /* ---------- canais: cruza os jogos com a programação ---------- */
 
   var CAT_RE = /esport|sport|futebol|premiere|libertad|champions|copa|brasileir|conmebol|globo|jogos|combate|dazn|tnt|espn|caz[eé]|fifa|abertos?/i;

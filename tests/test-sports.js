@@ -55,6 +55,8 @@ ok(/Globo/.test(Sports.whereToWatch(pg).short) && !/Record/.test(Sports.whereToW
 ok(/Record/.test(Sports.whereToWatch(g).short) && /Prime/.test(Sports.whereToWatch(g).short), 'Corinthians (FFU): inclui Record, CazéTV e Prime');
 var ucl = Sports.parseEvent(ev('2026-11-04T20:00Z', 'pre', t('1', 'Real Madrid', 'RMA'), t('2', 'Liverpool', 'LIV'), '0', '0'), 'uefa.champions');
 ok(/HBO Max/.test(Sports.whereToWatch(ucl).short) && Sports.whereToWatch(ucl).lines.length >= 3, 'Champions: HBO Max, TNT e SBT');
+ok(Sports.youtubeLinks(Sports.whereToWatch(g)).some(function (l) { return l.label === 'CazéTV' && /@CazeTV\/live$/.test(l.url); }), 'Corinthians: link do YouTube da CazéTV');
+ok(Sports.youtubeLinks(Sports.whereToWatch(ucl)).some(function (l) { return l.label === 'TNT Sports' && /^https:\/\/www\.youtube\.com\//.test(l.url); }) && !Sports.youtubeLinks(Sports.whereToWatch(pg)).some(function (l) { return l.label === 'CazéTV'; }), 'links só onde há YouTube na fonte');
 ok(Sports.whereToWatch(bra) === null, 'amistoso sem informação não mostra nada');
 var calls = [];
 function fakeHttp(url) {

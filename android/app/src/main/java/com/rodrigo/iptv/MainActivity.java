@@ -114,6 +114,31 @@ public class MainActivity extends Activity {
 
     /** Ponte exposta ao JavaScript como window.NativeApp. */
     public class Bridge {
+        /** Abre um endereço fora do app (YouTube). Tenta o app do YouTube e, se não houver, o que o sistema escolher. */
+        @JavascriptInterface
+        public boolean openUrl(String url) {
+            if (url == null || !(url.startsWith("https://www.youtube.com/") || url.startsWith("https://youtube.com/"))) {
+                return false;
+            }
+            String[] pkgs = tv
+                    ? new String[] { "com.google.android.youtube.tv", "com.google.android.youtube", null }
+                    : new String[] { "com.google.android.youtube", null };
+            for (String pkg : pkgs) {
+                try {
+                    Intent i = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url));
+                    if (pkg != null) {
+                        i.setPackage(pkg);
+                    }
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(i);
+                    return true;
+                } catch (Exception e) {
+                    // tenta a próxima opção
+                }
+            }
+            return false;
+        }
+
         @JavascriptInterface
         public boolean isTv() {
             return tv;
