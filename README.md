@@ -18,7 +18,7 @@ Servidor, usuário e senha (Xtream Codes). **http ou https:** se o endereço dig
 - **Gestos no player (app Android, celular):** arraste o dedo para cima/baixo na **metade esquerda** para mudar o **brilho** (levando até o mínimo, ele volta ao **automático**, o brilho do sistema) e na **direita** para mudar o **volume**; em filmes e episódios, arraste **para os lados** para avançar ou voltar (a tela mostra quanto). O brilho volta ao normal ao sair do player.
 
 ## Esportes (placares)
-Na Início, **Esportes** abre a central de jogos de futebol: **Brasileirão, Copa do Brasil, Libertadores, Sul-Americana, Champions, Premier League, La Liga, Ligue 1 e Campeonato Italiano**, e de seleções **Eliminatórias, Copa América, Eurocopa, Nations League e Copa do Mundo**; os **amistosos** aparecem só quando envolvem o Brasil ou um time que você segue.
+Na Início, **Esportes** abre a central de jogos de futebol: **Brasileirão, Copa do Brasil, Libertadores, Sul-Americana, Champions, Premier League, La Liga, Ligue 1, Bundesliga e Campeonato Italiano**, e de seleções **Eliminatórias, Copa América, Eurocopa, Nations League e Copa do Mundo**; os **amistosos** aparecem só quando envolvem o Brasil ou um time que você segue.
 - **Na Início:** uma fileira **Esportes · jogos de hoje** mostra os jogos ao vivo primeiro e depois os das próximas horas, por horário; o que já terminou sai da lista. OK abre o jogo (o último cartão leva à central de Esportes).
 - **Placares:** jogos de ontem a daqui a 6 dias (um dia por consulta, guardado em memória), agrupados por liga, com **Ao vivo agora** no topo (minuto e placar atualizam sozinhos a cada 30 s). OK em um jogo abre gols, estatísticas (posse, finalizações, escanteios, faltas, cartões) e **onde assistir**.
 - **Onde assistir:** o app procura, na programação (EPG) dos seus canais de esporte e abertos, qual deles passa o jogo (pelo nome dos times) e mostra o canal no cartão; OK no botão sintoniza.
@@ -134,3 +134,15 @@ Na LG real a prévia carrega só às vezes (servidor lento / play cortado) e dei
 
 ## Abrir no YouTube (1.35.0)
 Em "Onde assistir" de um jogo, quando a fonte transmite no YouTube (CazéTV, TNT Sports, ge tv, SportyNet) aparece o botão **Abrir … no YouTube**. Android (celular e TV): abre o app do YouTube (`NativeApp.openUrl`, só aceita endereços do youtube.com). CazéTV vai direto para `@CazeTV/live`; as demais abrem a busca de transmissões ao vivo. webOS: pede à TV para abrir o app `youtube.leanback.v4` com o endereço; se a TV recusar, mostra um aviso para procurar o canal lá.
+
+## YouTube na LG (1.35.1)
+O app do YouTube da TV (inclusive o youtube-webos do Homebrew, mesmo id `youtube.leanback.v4`) só abre vídeo direto: um endereço de canal carregava o site de computador. Agora, para a CazéTV, o app busca a página `…/@CazeTV/live` pelo serviço de rede, lê o vídeo da transmissão no ar (link canônico) e abre esse vídeo no app. Se a CazéTV não estiver ao vivo, avisa e só abre o YouTube. Para TNT Sports, ge tv e SportyNet abre o YouTube e orienta a procurar o canal.
+
+## YouTube na LG, todos os canais (1.35.2)
+O mesmo processo da CazéTV vale para TNT Sports (`@TNTSportsBR`) e ge tv (`@getv`): o app lê a página `/live` do canal e abre o vídeo no ar no app do YouTube. SportyNet tenta algumas variações de endereço (`@SportyNet`, `@sportynetbr`, `@sportynet`) e usa a que responder. Sem transmissão no ar, avisa e só abre o YouTube.
+
+## SportyNet (1.35.3)
+O canal da SportyNet usa o endereço fixo por ID (`/channel/UCMcc9elPZGpg6eU4i3YaCpA/live`), confirmado a partir de uma transmissão real, em vez de tentar variações de @handle.
+
+## Bundesliga (1.36.0)
+Nova liga em Esportes (ESPN `ger.1`), com "Onde assistir" = SportyNet (YouTube, aberto) e o botão que abre a transmissão no YouTube.

@@ -22,6 +22,7 @@
     { id: 'esp.1', name: 'La Liga', short: 'La Liga', all: true },
     { id: 'fra.1', name: 'Ligue 1', short: 'Ligue 1', all: true },
     { id: 'ita.1', name: 'Campeonato Italiano (Serie A)', short: 'Serie A', all: true },
+    { id: 'ger.1', name: 'Bundesliga', short: 'Bundesliga', all: true },
     { id: 'fifa.friendly', name: 'Amistosos de seleções', short: 'Amistosos', all: false, nat: true },
     { id: 'fifa.worldq.conmebol', name: 'Eliminatórias Sul-Americanas', short: 'Eliminatórias', all: true, nat: true },
     { id: 'conmebol.america', name: 'Copa América', short: 'Copa América', all: true, nat: true },
@@ -212,7 +213,8 @@
     'eng.1': { short: 'CazéTV', lines: ['CazéTV (YouTube, grátis) — 1 jogo por rodada'] },
     'esp.1': { short: 'CazéTV', lines: ['CazéTV (YouTube, grátis) — todos os jogos'] },
     'fra.1': { short: 'CazéTV · Xsports', lines: ['CazéTV (YouTube, grátis)', 'Xsports (TV aberta) — 3 jogos por rodada'] },
-    'ita.1': { short: 'SportyNet', lines: ['SportyNet (YouTube, aberto)'] }
+    'ita.1': { short: 'SportyNet', lines: ['SportyNet (YouTube, aberto)'] },
+    'ger.1': { short: 'SportyNet', lines: ['SportyNet (YouTube, aberto)'] }
   };
   var LIBRA = ['atletico mg', 'atletico mineiro', 'bahia', 'gremio', 'flamengo', 'palmeiras', 'bragantino', 'remo', 'santos', 'sao paulo', 'vitoria'];
   var FFU = ['botafogo', 'chapecoense', 'corinthians', 'coritiba', 'cruzeiro', 'fluminense', 'internacional', 'mirassol', 'vasco'];
@@ -236,14 +238,15 @@
 
   /* links do YouTube para as fontes que transmitem lá (abre o app do YouTube) */
   var YT = [
-    { re: /Caz[eé]TV/, label: 'CazéTV', url: 'https://www.youtube.com/@CazeTV/live' },
-    { re: /TNT Sports/, label: 'TNT Sports', url: 'https://www.youtube.com/results?search_query=TNT+Sports+Brasil+ao+vivo&sp=EgJAAQ%253D%253D' },
-    { re: /ge tv/i, label: 'ge tv', url: 'https://www.youtube.com/results?search_query=ge+tv+ao+vivo&sp=EgJAAQ%253D%253D' },
-    { re: /SportyNet/, label: 'SportyNet', url: 'https://www.youtube.com/results?search_query=SportyNet+ao+vivo&sp=EgJAAQ%253D%253D' }
+    { re: /Caz[eé]TV/, label: 'CazéTV', url: 'https://www.youtube.com/@CazeTV/live', tries: ['https://www.youtube.com/@CazeTV/live'] },
+    { re: /TNT Sports/, label: 'TNT Sports', url: 'https://www.youtube.com/@TNTSportsBR/live', tries: ['https://www.youtube.com/@TNTSportsBR/live'] },
+    { re: /ge tv/i, label: 'ge tv', url: 'https://www.youtube.com/@getv/live', tries: ['https://www.youtube.com/@getv/live'] },
+    { re: /SportyNet/, label: 'SportyNet', url: 'https://www.youtube.com/channel/UCMcc9elPZGpg6eU4i3YaCpA/live',
+      tries: ['https://www.youtube.com/channel/UCMcc9elPZGpg6eU4i3YaCpA/live'] }
   ];
   Sp.youtubeLinks = function (wr) {
     var txt = wr && wr.lines ? wr.lines.join('\n') : '', out = [];
-    YT.forEach(function (y) { if (y.re.test(txt)) { out.push({ label: y.label, url: y.url }); } });
+    YT.forEach(function (y) { if (y.re.test(txt)) { out.push({ label: y.label, url: y.url, tries: y.tries }); } });
     return out;
   };
 
