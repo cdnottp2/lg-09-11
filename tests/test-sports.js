@@ -63,6 +63,13 @@ var ytG = { home: { name: 'Liverpool' }, away: { name: 'Manchester United' } };
 ok(Sports.parseStreams(ytHtml).length === 3 && Sports.parseStreams(ytHtml)[0].live && !Sports.parseStreams(ytHtml)[2].live, 'lista de transmissões do canal (ao vivo x encerradas)');
 ok(Sports.pickLive(ytHtml, ytG).id === 'BBBBBBBBBBB', 'escolhe a live que cita os times (e não o atletismo)');
 ok(Sports.pickLive(ytHtml, { home: { name: 'Palmeiras' }, away: { name: 'Santos' } }) === null, 'sem jogo no ar: não escolhe outra transmissão');
+var feed = '<feed><entry><yt:videoId>BBBBBBBBBBB</yt:videoId><title>LIVERPOOL x MANCHESTER UNITED &amp; cia - AO VIVO</title><published>' + new Date(Date.now() - 3 * 3600000).toISOString() + '</published></entry>'
+  + '<entry><yt:videoId>DDDDDDDDDDD</yt:videoId><title>Liverpool: melhores momentos</title><published>' + new Date(Date.now() - 5 * 3600000).toISOString() + '</published></entry>'
+  + '<entry><yt:videoId>EEEEEEEEEEE</yt:videoId><title>Liverpool x Arsenal</title><published>' + new Date(Date.now() - 400 * 3600000).toISOString() + '</published></entry></feed>';
+ok(Sports.parseFeed(feed).length === 3, 'feed RSS: 3 vídeos');
+ok(Sports.pickFeed(feed, ytG, Date.now()).id === 'BBBBBBBBBBB', 'feed: escolhe a transmissão do jogo (não o resumo nem o jogo antigo)');
+ok(Sports.pickFeed(feed, { home: { name: 'Palmeiras' }, away: { name: 'Santos' } }, Date.now()) === null, 'feed: sem jogo, sem escolha');
+ok(Sports.channelId('<link rel="alternate" href="https://www.youtube.com/feeds/videos.xml?channel_id=UCMcc9elPZGpg6eU4i3YaCpA">') === 'UCMcc9elPZGpg6eU4i3YaCpA', 'acha o id do canal na página');
 ok(Sports.youtubeLinks(Sports.whereToWatch(ucl)).some(function (l) { return l.label === 'TNT Sports' && /^https:\/\/www\.youtube\.com\//.test(l.url); }) && !Sports.youtubeLinks(Sports.whereToWatch(pg)).some(function (l) { return l.label === 'CazéTV'; }), 'links só onde há YouTube na fonte');
 ok(Sports.whereToWatch(bra) === null, 'amistoso sem informação não mostra nada');
 var calls = [];

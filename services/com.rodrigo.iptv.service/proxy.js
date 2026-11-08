@@ -17,10 +17,13 @@ var UAS = [
   ['VLC', 'VLC/3.0.18 LibVLC/3.0.18'],
   ['okhttp', 'okhttp/4.9.3'],
   ['Dalvik', 'Dalvik/2.1.0 (Linux; U; Android 11; Pixel 5 Build/RQ3A.210805.001.A1)'],
-  ['Web0S', 'Mozilla/5.0 (Web0S; Linux/SmartTV) IPTV']
+  ['Web0S', 'Mozilla/5.0 (Web0S; Linux/SmartTV) IPTV'],
+  ['Chrome', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36']
 ];
 // [índice do UA, família de IP]: 4 = só IPv4, 0 = automático
 var PLAN = [[0, 4], [1, 4], [2, 4], [0, 0], [3, 0]];
+// ua=browser (ex.: páginas do YouTube, que só mandam a lista de vídeos para navegador)
+var PLAN_BROWSER = [[4, 4], [4, 0]];
 var CONNECT_TIMEOUT = 8000;
 var IDLE_TIMEOUT = 60000;
 
@@ -36,6 +39,7 @@ function create(token) {
       headers: { 'User-Agent': ua, 'Accept': '*/*', 'Connection': 'close' }
     };
     if (family) { o.family = family; }
+    if (/Chrome\//.test(ua)) { o.headers['Accept-Language'] = 'pt-BR,pt;q=0.9'; o.headers['Cookie'] = 'CONSENT=YES+1; SOCS=CAI'; }
     var done = false, ct = null;
 
     function fail(err) {
@@ -71,17 +75,18 @@ function create(token) {
     up.end();
   }
 
-  function fetchFollow(target, res) {
+  function fetchFollow(target, res, browser) {
+    var plan = browser ? PLAN_BROWSER : PLAN;
     var errs = [], i = 0, cur = null, aborted = false;
     res.on('close', function () { aborted = true; if (cur) { try { cur.abort(); } catch (e) {} } });
 
     function next() {
       if (aborted) { return; }
-      if (i >= PLAN.length) {
+      if (i >= plan.length) {
         if (!res.headersSent) { res.writeHead(502, CORS); }
         return res.end('proxy error: ' + errs.join(' | '));
       }
-      var p = PLAN[i++];
+      var p = plan[i++];
       attempt(target, 5, UAS[p[0]][1], p[1], res, function (err) {
         errs.push((p[1] === 4 ? 'ipv4' : 'auto') + '/' + UAS[p[0]][0] + ': ' + (err.code || err.message));
         next();
@@ -95,7 +100,7 @@ function create(token) {
     var q = urlLib.parse(req.url, true).query;
     if (q.t !== token) { res.writeHead(403, CORS); return res.end('forbidden'); }
     if (!/^https?:\/\//i.test(q.u || '')) { res.writeHead(400, CORS); return res.end('bad url'); }
-    fetchFollow(q.u, res);
+    fetchFollow(q.u, res, q.ua === 'browser');
   });
 }
 

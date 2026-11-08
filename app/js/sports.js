@@ -241,28 +241,46 @@
     { re: /Caz[eé]TV/, label: 'CazéTV', url: 'https://www.youtube.com/@CazeTV/live', streams: 'https://www.youtube.com/@CazeTV/streams', tries: ['https://www.youtube.com/@CazeTV/live'] },
     { re: /TNT Sports/, label: 'TNT Sports', url: 'https://www.youtube.com/@TNTSportsBR/live', streams: 'https://www.youtube.com/@TNTSportsBR/streams', tries: ['https://www.youtube.com/@TNTSportsBR/live'] },
     { re: /ge tv/i, label: 'ge tv', url: 'https://www.youtube.com/@getv/live', streams: 'https://www.youtube.com/@getv/streams', tries: ['https://www.youtube.com/@getv/live'] },
-    { re: /SportyNet/, label: 'SportyNet', url: 'https://www.youtube.com/channel/UCMcc9elPZGpg6eU4i3YaCpA/live', streams: 'https://www.youtube.com/channel/UCMcc9elPZGpg6eU4i3YaCpA/streams',
+    { re: /SportyNet/, label: 'SportyNet', url: 'https://www.youtube.com/channel/UCMcc9elPZGpg6eU4i3YaCpA/live', streams: 'https://www.youtube.com/channel/UCMcc9elPZGpg6eU4i3YaCpA/streams', cid: 'UCMcc9elPZGpg6eU4i3YaCpA',
       tries: ['https://www.youtube.com/channel/UCMcc9elPZGpg6eU4i3YaCpA/live'] }
   ];
   Sp.youtubeLinks = function (wr) {
     var txt = wr && wr.lines ? wr.lines.join('\n') : '', out = [];
-    YT.forEach(function (y) { if (y.re.test(txt)) { out.push({ label: y.label, url: y.url, tries: y.tries, streams: y.streams }); } });
+    YT.forEach(function (y) { if (y.re.test(txt)) { out.push({ label: y.label, url: y.url, tries: y.tries, streams: y.streams, cid: y.cid }); } });
     return out;
   };
 
   /* lista de transmissões de um canal (página /streams): [{ id, title, live }] */
   Sp.parseStreams = function (html) {
     html = String(html || '');
-    var re = /"(?:videoRenderer|gridVideoRenderer)":\{"videoId":"([\w-]{11})"/g, hits = [], m, out = [];
-    while ((m = re.exec(html))) { hits.push({ id: m[1], at: m.index }); }
+    var re = /"(?:videoRenderer|gridVideoRenderer)":\{"videoId":"([\w-]{11})"|"contentId":"([\w-]{11})","contentType":"LOCKUP_CONTENT_TYPE_VIDEO"/g, hits = [], m, out = [];
+    while ((m = re.exec(html))) { hits.push({ id: m[1] || m[2], at: m.index }); }
     hits.forEach(function (x, i) {
       var chunk = html.slice(x.at, i + 1 < hits.length ? hits[i + 1].at : x.at + 6000);
-      var t = /"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/.exec(chunk) || /"title":\{"simpleText":"((?:[^"\\]|\\.)*)"/.exec(chunk);
+      var t = /"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/.exec(chunk) || /"title":\{"simpleText":"((?:[^"\\]|\\.)*)"/.exec(chunk) || /"title":\{"content":"((?:[^"\\]|\\.)*)"/.exec(chunk);
       var title = t ? t[1] : '';
       try { title = JSON.parse('"' + title + '"'); } catch (e) { /* mantém */ }
-      out.push({ id: x.id, title: title, live: /BADGE_STYLE_TYPE_LIVE_NOW|"style":"LIVE"|"iconType":"LIVE"|assistindo agora|"label":"AO VIVO"/i.test(chunk) });
+      out.push({ id: x.id, title: title, live: /BADGE_STYLE_TYPE_LIVE_NOW|BADGE_STYLE_LIVE|"style":"LIVE"|"iconType":"LIVE"|assistindo agora|"label":"AO VIVO"/i.test(chunk) });
     });
     return out;
+  };
+
+  /* feed RSS do canal (funciona sem navegador): [{ id, title, at }] */
+  function xmlText(t) {
+    return String(t || '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, '&');
+  }
+  Sp.parseFeed = function (xml) {
+    var out = [], re = /<entry>([\s\S]*?)<\/entry>/g, m;
+    xml = String(xml || '');
+    while ((m = re.exec(xml))) {
+      var id = /<yt:videoId>([\w-]{11})<\/yt:videoId>/.exec(m[1]), t = /<title>([\s\S]*?)<\/title>/.exec(m[1]), p = /<published>([^<]+)<\/published>/.exec(m[1]);
+      if (id) { out.push({ id: id[1], title: xmlText(t && t[1]), at: p ? Date.parse(p[1]) || 0 : 0 }); }
+    }
+    return out;
+  };
+  Sp.channelId = function (html) {
+    var m = /channel_id=(UC[\w-]{22})/.exec(html) || /"(?:channelId|externalId)":"(UC[\w-]{22})"/.exec(html) || /\/channel\/(UC[\w-]{22})/.exec(html);
+    return m ? m[1] : null;
   };
 
   var GENERIC = { club: 1, city: 1, united: 1, real: 1, sporting: 1, team: 1, futebol: 1, football: 1, clube: 1 };
@@ -270,6 +288,22 @@
     return Sp.norm(name).split(' ').filter(function (w) { return w.length >= 4 && !GENERIC[w]; });
   }
   /* entre as transmissões AO VIVO, a que cita um dos times do jogo no título (a de dois times vale mais) */
+  /* pelo feed: vídeo recente (até 48 h) que cita os times; resumos/gols perdem para a transmissão */
+  Sp.pickFeed = function (xml, g, now) {
+    var hw = teamWords(g.home.name), aw = teamWords(g.away.name), best = null, bs = 0;
+    Sp.parseFeed(xml).forEach(function (st) {
+      if (st.at && (st.at < now - 48 * 3600000 || st.at > now + 3600000)) { return; }
+      var t = ' ' + Sp.norm(st.title) + ' ';
+      var has = function (ws) { return ws.some(function (w) { return t.indexOf(' ' + w) >= 0; }); };
+      var sc = (has(hw) ? 2 : 0) + (has(aw) ? 2 : 0);
+      if (!sc) { return; }
+      if (/melhores momentos|gols |resumo|reapresentacao|replay|bastidores/.test(t)) { sc -= 1; }
+      if (/ao vivo/.test(t)) { sc += 1; }
+      if (sc > bs || (sc === bs && best && st.at > best.at)) { bs = sc; best = st; }
+    });
+    return best;
+  };
+
   Sp.pickLive = function (html, g) {
     var hw = teamWords(g.home.name), aw = teamWords(g.away.name), best = null, bs = 0;
     Sp.parseStreams(html).forEach(function (st) {
