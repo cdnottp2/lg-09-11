@@ -56,6 +56,13 @@ ok(/Record/.test(Sports.whereToWatch(g).short) && /Prime/.test(Sports.whereToWat
 var ucl = Sports.parseEvent(ev('2026-11-04T20:00Z', 'pre', t('1', 'Real Madrid', 'RMA'), t('2', 'Liverpool', 'LIV'), '0', '0'), 'uefa.champions');
 ok(/HBO Max/.test(Sports.whereToWatch(ucl).short) && Sports.whereToWatch(ucl).lines.length >= 3, 'Champions: HBO Max, TNT e SBT');
 ok(Sports.youtubeLinks(Sports.whereToWatch(g)).some(function (l) { return l.label === 'CazéTV' && /@CazeTV\/live$/.test(l.url); }), 'Corinthians: link do YouTube da CazéTV');
+var ytHtml = '{"a":{"videoRenderer":{"videoId":"AAAAAAAAAAA","title":{"runs":[{"text":"AO VIVO: BRASIL NO ATLETISMO | JOGOS OLÍMPICOS"}]},"thumbnailOverlays":[{"thumbnailOverlayTimeStatusRenderer":{"style":"LIVE"}}]}},'
+  + '"b":{"videoRenderer":{"videoId":"BBBBBBBBBBB","title":{"runs":[{"text":"LIVERPOOL X MANCHESTER UNITED: AO VIVO COM IMAGENS"}]},"thumbnailOverlays":[{"thumbnailOverlayTimeStatusRenderer":{"style":"LIVE"}}]}},'
+  + '"c":{"videoRenderer":{"videoId":"CCCCCCCCCCC","title":{"runs":[{"text":"LIVERPOOL X ARSENAL (semana passada)"}]},"thumbnailOverlays":[{"thumbnailOverlayTimeStatusRenderer":{"style":"DEFAULT"}}]}}}';
+var ytG = { home: { name: 'Liverpool' }, away: { name: 'Manchester United' } };
+ok(Sports.parseStreams(ytHtml).length === 3 && Sports.parseStreams(ytHtml)[0].live && !Sports.parseStreams(ytHtml)[2].live, 'lista de transmissões do canal (ao vivo x encerradas)');
+ok(Sports.pickLive(ytHtml, ytG).id === 'BBBBBBBBBBB', 'escolhe a live que cita os times (e não o atletismo)');
+ok(Sports.pickLive(ytHtml, { home: { name: 'Palmeiras' }, away: { name: 'Santos' } }) === null, 'sem jogo no ar: não escolhe outra transmissão');
 ok(Sports.youtubeLinks(Sports.whereToWatch(ucl)).some(function (l) { return l.label === 'TNT Sports' && /^https:\/\/www\.youtube\.com\//.test(l.url); }) && !Sports.youtubeLinks(Sports.whereToWatch(pg)).some(function (l) { return l.label === 'CazéTV'; }), 'links só onde há YouTube na fonte');
 ok(Sports.whereToWatch(bra) === null, 'amistoso sem informação não mostra nada');
 var calls = [];

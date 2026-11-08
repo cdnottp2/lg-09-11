@@ -149,3 +149,6 @@ Nova liga em Esportes (ESPN `ger.1`), com "Onde assistir" = SportyNet (YouTube, 
 
 ## YouTube na LG: formato do parâmetro (1.36.1)
 O youtube-webos (Homebrew) usa o mesmo id `youtube.leanback.v4` e só entende `contentTarget` no formato `v=ID_DO_VIDEO` (não o endereço completo). O app agora envia nesse formato, que o app oficial também aceita.
+
+## Escolher a live certa (1.36.2)
+Canais como a CazéTV têm várias transmissões ao mesmo tempo (a página `/live` abre só a principal, ex.: atletismo em vez do jogo). Agora o botão lê a lista `…/streams` do canal (Android direto; webOS pelo serviço de rede), ficando só com as transmissões **ao vivo**, e abre a que cita um dos times no título (`Sports.pickLive`). Se o jogo não estiver no ar, avisa e: no Android abre a busca do YouTube com os dois times (filtro "ao vivo"); na LG abre o app do YouTube. Se a lista não puder ser lida, usa o plano antigo (transmissão principal do canal na LG; busca no Android).

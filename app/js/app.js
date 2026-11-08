@@ -1081,7 +1081,7 @@
     var yts = wr ? Sports.youtubeLinks(wr) : [];
     if (yts.length) {
       body.appendChild(h('div', { cls: 'spwatch' }, yts.map(function (y) {
-        return h('button', { cls: 'f btn primary', type: 'button', 'data-k': 'yt:' + y.label, on: { click: function () { openYouTube(y.url, y.label, y.tries); } } },
+        return h('button', { cls: 'f btn primary', type: 'button', 'data-k': 'yt:' + y.label, on: { click: function () { openYouTube(y, g); } } },
           [icon('play', 22), 'Abrir ' + y.label + ' no YouTube']);
       })));
     }
@@ -1092,46 +1092,60 @@
     })));
   }
 
-  /* abre um link fora do app: Android (app do YouTube) e webOS (app YouTube da TV) */
-  function openYouTube(url, label, tries) {
-    if (window.NativeApp && window.NativeApp.openUrl) {
-      try { if (window.NativeApp.openUrl(url)) { return; } } catch (e) {}
-      toast('Não consegui abrir o YouTube. Procure por ' + label + ' lá.', 4000);
-      return;
-    }
-    if (window.PalmServiceBridge) {
-      /* webOS: o app do YouTube da TV só abre vídeo direto (não canal/busca). Para o canal "…/live", acha o vídeo
-         da transmissão pelo serviço de rede do app (a página do /live aponta para o vídeo no ar). */
-      var launch = function (target) {
+  /* abre a transmissão do jogo no YouTube: Android (app do YouTube) e webOS (app YouTube da TV, inclusive youtube-webos).
+     Canais como a CazéTV têm várias lives ao mesmo tempo; por isso lê a lista /streams do canal e escolhe a que cita os times. */
+  function openYouTube(y, g) {
+    var label = y.label, android = !!(window.NativeApp && window.NativeApp.openUrl), webos = !android && !!window.PalmServiceBridge;
+    var searchUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(g.home.name + ' ' + g.away.name + ' ao vivo') + '&sp=EgJAAQ%3D%3D';
+    var failMsg = 'Abra o YouTube e procure por ' + label + '.';
+    var launch = function (videoId, fallbackUrl) {
+      if (android) {
+        var u = videoId ? 'https://www.youtube.com/watch?v=' + videoId : (fallbackUrl || y.url);
+        try { if (window.NativeApp.openUrl(u)) { return; } } catch (e) {}
+        toast('Não consegui abrir o YouTube. Procure por ' + label + ' lá.', 4000);
+        return;
+      }
+      if (webos) {
         try {
           var b = new window.PalmServiceBridge();
           b.onservicecallback = function (msg) {
             var r = {}; try { r = JSON.parse(msg); } catch (e) {}
-            if (!r.returnValue) { toast('Abra o app YouTube da TV e procure por ' + label + '.', 5000); }
+            if (!r.returnValue) { toast(failMsg, 5000); }
           };
-          b.call('luna://com.webos.applicationManager/launch', JSON.stringify({ id: 'youtube.leanback.v4', params: target ? { contentTarget: target } : {} }));
-        } catch (e) { toast('Abra o app YouTube da TV e procure por ' + label + '.', 5000); }
-      };
-      if (tries && tries.length) {
-        toast('Procurando a transmissão da ' + label + '…', 3000);
-        var tryNext = function (i, sawPage) {
-          if (i >= tries.length) {
-            toast(sawPage ? label + ' não está ao vivo agora.' : 'Não consegui achar a transmissão. Procure por ' + label + ' no YouTube.', 5000);
-            launch(null); return;
-          }
-          viaProxy(tries[i]).then(function (txt) {
-            var m = /<link rel="canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})"/.exec(txt || '');
-            if (m) { launch('v=' + m[1]); } else { tryNext(i + 1, true); }
-          }, function () { tryNext(i + 1, sawPage); });
-        };
-        tryNext(0, false);
-      } else {
-        toast('Abrindo o YouTube — procure por ' + label + ' ao vivo.', 5000);
-        launch(null);
+          b.call('luna://com.webos.applicationManager/launch', JSON.stringify({ id: 'youtube.leanback.v4', params: videoId ? { contentTarget: 'v=' + videoId } : {} }));
+        } catch (e) { toast(failMsg, 5000); }
+        return;
       }
-      return;
-    }
-    toast('Abra o YouTube e procure por ' + label + '.', 5000);
+      toast(failMsg, 5000);
+    };
+    if (!android && !webos) { toast(failMsg, 5000); return; }
+
+    /* plano B quando não acha o jogo: Android abre a busca com os dois times; na TV abre o YouTube e avisa */
+    var noGame = function (why) {
+      toast(why, 6000);
+      if (android) { launch(null, searchUrl); } else { launch(null); }
+    };
+    /* último recurso: a transmissão principal do canal (só se a lista /streams não pôde ser lida) */
+    var viaLive = function () {
+      var tries = y.tries || [];
+      var next = function (i) {
+        if (i >= tries.length) { noGame('Não consegui achar a transmissão. Procure por ' + label + ' no YouTube.'); return; }
+        http(tries[i]).then(function (txt) {
+          var m = /<link rel="canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})"/.exec(txt || '');
+          if (m) { launch(m[1]); } else { next(i + 1); }
+        }, function () { next(i + 1); });
+      };
+      next(0);
+    };
+
+    if (!y.streams) { if (android) { launch(null, searchUrl); } else { viaLive(); } return; }
+    toast('Procurando o jogo na ' + label + '…', 3000);
+    http(y.streams).then(function (html) {
+      var all = Sports.parseStreams(html);
+      if (!all.length) { if (android) { launch(null, searchUrl); } else { viaLive(); } return; }   // página sem lista: não dá para escolher
+      var pick = Sports.pickLive(html, g);
+      if (pick) { launch(pick.id); } else { noGame('Não achei ' + g.home.name + ' x ' + g.away.name + ' ao vivo na ' + label + ' agora.'); }
+    }, function () { if (android) { launch(null, searchUrl); } else { viaLive(); } });
   }
 
   function spInit() {
@@ -2838,7 +2852,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.36.1']
+      ['Versão do app', '1.36.2']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
