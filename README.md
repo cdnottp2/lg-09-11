@@ -146,3 +146,6 @@ O canal da SportyNet usa o endereço fixo por ID (`/channel/UCMcc9elPZGpg6eU4i3Y
 
 ## Bundesliga (1.36.0)
 Nova liga em Esportes (ESPN `ger.1`), com "Onde assistir" = SportyNet (YouTube, aberto) e o botão que abre a transmissão no YouTube.
+
+## YouTube na LG: formato do parâmetro (1.36.1)
+O youtube-webos (Homebrew) usa o mesmo id `youtube.leanback.v4` e só entende `contentTarget` no formato `v=ID_DO_VIDEO` (não o endereço completo). O app agora envia nesse formato, que o app oficial também aceita.

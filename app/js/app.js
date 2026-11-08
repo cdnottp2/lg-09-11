@@ -1121,7 +1121,7 @@
           }
           viaProxy(tries[i]).then(function (txt) {
             var m = /<link rel="canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})"/.exec(txt || '');
-            if (m) { launch('https://www.youtube.com/watch?v=' + m[1]); } else { tryNext(i + 1, true); }
+            if (m) { launch('v=' + m[1]); } else { tryNext(i + 1, true); }
           }, function () { tryNext(i + 1, sawPage); });
         };
         tryNext(0, false);
@@ -2838,7 +2838,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.36.0']
+      ['Versão do app', '1.36.1']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
