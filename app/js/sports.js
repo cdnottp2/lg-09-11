@@ -305,7 +305,8 @@
       var has = function (ws) { return ws.some(function (w) { return t.indexOf(' ' + w) >= 0; }); };
       var sc = (has(hw) ? 2 : 0) + (has(aw) ? 2 : 0);
       if (!sc) { return; }
-      if (cn && t.replace(/ /g, '').indexOf(cn) >= 0) { sc += 1; }
+      if (cn && t.replace(/ /g, '').indexOf(cn) < 0) { return; }   // só canal oficial: sem reações/watchalongs
+      if (cn) { sc += 1; }
       if (sc > bs) { bs = sc; best = st; }
     });
     return best;

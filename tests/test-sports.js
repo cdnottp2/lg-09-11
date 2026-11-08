@@ -65,6 +65,8 @@ var ytG = { home: { name: 'Liverpool' }, away: { name: 'Manchester United' } };
 ok(Sports.parseStreams(ytHtml).length === 4 && Sports.parseStreams(ytHtml)[0].live && !Sports.parseStreams(ytHtml)[3].live, 'lista de vídeos (qualquer componente): ao vivo x não ao vivo');
 ok(Sports.pickLive(ytHtml, ytG, 'CazéTV').id === 'BBBBBBBBBBB', 'escolhe a live do canal que cita os times (não o atletismo nem o watchalong)');
 ok(Sports.pickLive(ytHtml, ytG, 'Overlap Daily').id === 'CCCCCCCCCCC', 'o canal pedido desempata');
+var onlyReact = '{"v":{"videoRenderer":{"videoId":"RRRRRRRRRRR","title":{"runs":[{"text":"CRYSTAL PALACE x LIVERPOOL LIVE Watchalong"}]},"ownerText":{"runs":[{"text":"Overlap Daily"}]},"badges":[{"style":"BADGE_STYLE_TYPE_LIVE_NOW"}]}}}';
+ok(Sports.pickLive(onlyReact, { home: { name: 'Crystal Palace' }, away: { name: 'Liverpool' } }, 'CazéTV') === null, 'só canal oficial: reação/watchalong de outro canal é ignorada');
 ok(Sports.pickLive(ytHtml, { home: { name: 'Palmeiras' }, away: { name: 'Santos' } }, 'CazéTV') === null, 'sem jogo no ar: não escolhe outra transmissão');
 var feed = '<feed><entry><yt:videoId>BBBBBBBBBBB</yt:videoId><title>LIVERPOOL x MANCHESTER UNITED &amp; cia - AO VIVO</title><published>' + new Date(Date.now() - 3 * 3600000).toISOString() + '</published></entry>'
   + '<entry><yt:videoId>DDDDDDDDDDD</yt:videoId><title>Liverpool: melhores momentos</title><published>' + new Date(Date.now() - 5 * 3600000).toISOString() + '</published></entry>'

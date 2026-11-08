@@ -1102,7 +1102,7 @@
   }
   function openYouTube(y, g) {
     var label = y.label, android = !!(window.NativeApp && window.NativeApp.openUrl), webos = !android && !!window.PalmServiceBridge;
-    var searchUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(g.home.name + ' ' + g.away.name + ' ao vivo') + '&sp=EgJAAQ%3D%3D';
+    var searchUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(g.home.name + ' ' + g.away.name + ' ' + label + ' ao vivo') + '&sp=EgJAAQ%3D%3D';
     var failMsg = 'Abra o YouTube e procure por ' + label + '.';
     if (!android && !webos) { toast(failMsg, 5000); return; }
     var lunaCall = function (uri, params, cb) {
@@ -1112,7 +1112,8 @@
     };
     var launch = function (videoId) {
       if (android) {
-        try { if (window.NativeApp.openUrl(videoId ? 'https://www.youtube.com/watch?v=' + videoId : searchUrl)) { return; } } catch (e) {}
+        // sem achar o jogo, abre a página do canal oficial (nunca uma busca geral, que traz reações e watchalongs)
+        try { if (window.NativeApp.openUrl(videoId ? 'https://www.youtube.com/watch?v=' + videoId : (y.streams || y.url))) { return; } } catch (e) {}
         toast('Não consegui abrir o YouTube. Procure por ' + label + ' lá.', 4000);
         return;
       }
@@ -1148,7 +1149,7 @@
         return Sports.pickLive(html, g, label);
       }, function (e) { diag.push(name + ': erro ' + ((e && e.message) || '?')); return null; });
     };
-    // 1) busca do YouTube só com transmissões ao vivo (é o que o app do YouTube mostra); 2) lista /streams do canal; 3) feed RSS
+    // só vale transmissão do canal oficial. 1) busca (ao vivo) filtrando pelo canal; 2) lista /streams do canal; 3) feed RSS
     scan('busca', searchUrl).then(function (pick) {
       return pick || (y.streams ? scan('canal', y.streams) : null);
     }).then(function (pick) {
@@ -1158,6 +1159,67 @@
       toast('Não achei ' + g.home.name + ' x ' + g.away.name + ' ao vivo na ' + label + ' agora. (' + diag.join('; ') + ')', 9000);
       launch(null);
     });
+  }
+
+  /* ---------- aviso de gols (pop-up) nos jogos ao vivo ---------- */
+  var GW = { last: {}, leagues: [], scanAt: 0, busy: false, q: [], showing: false };
+  function goalMode() { return store.get('goalalert', 'all'); }   // 'off' | 'mine' | 'all'
+  function gwWanted(g, mode) {
+    if (mode === 'all') { return true; }
+    var f = spFollow();
+    return g.home.abbr === 'BRA' || g.away.abbr === 'BRA' || !!f[g.home.id] || !!f[g.away.id];
+  }
+  function gwShow() {
+    if (GW.showing || !GW.q.length) { return; }
+    var a = GW.q.shift(), el = $('goal');
+    GW.showing = true;
+    el.innerHTML = '';
+    el.appendChild(h('div', { cls: 'goaltop', text: '⚽ GOL' + (a.team ? ' — ' + a.team : '') }));
+    el.appendChild(h('div', { cls: 'goalscore', text: a.line }));
+    if (a.sub) { el.appendChild(h('div', { cls: 'goalsub', text: a.sub })); }
+    el.classList.remove('hidden');
+    setTimeout(function () { el.classList.add('in'); }, 20);
+    setTimeout(function () {
+      el.classList.remove('in');
+      setTimeout(function () { el.classList.add('hidden'); GW.showing = false; gwShow(); }, 400);
+    }, 7000);
+  }
+  function gwGoal(g, scorer) {
+    var lastGoal = g.goals && g.goals.length ? g.goals[g.goals.length - 1] : null;
+    var sub = [g.leagueName, lastGoal && lastGoal.min ? lastGoal.min : (g.clock || ''), lastGoal && lastGoal.who ? lastGoal.who : ''].filter(Boolean).join(' · ');
+    GW.q.push({ team: scorer, line: g.home.name + ' ' + (g.home.score || '0') + ' x ' + (g.away.score || '0') + ' ' + g.away.name, sub: sub });
+    gwShow();
+  }
+  function gwTick() {
+    var mode = goalMode();
+    if (mode === 'off' || GW.busy || document.hidden || !S.provider || !S.cfg) { return; }
+    var now = Date.now(), full = now - GW.scanAt > 5 * 60000 || !GW.leagues.length;
+    GW.busy = true;
+    Sports.fetchDay(http, spDay(0), full ? null : GW.leagues).then(function (r) {
+      var liveNow = {}, leagues = {};
+      r.games.forEach(function (g) {
+        if (!Sports.isLive(g) || !Sports.visible(g, spFollow())) { return; }
+        var k = spGame(g), hs = Number(g.home.score) || 0, as = Number(g.away.score) || 0, prev = GW.last[k];
+        liveNow[k] = 1; leagues[g.league] = 1;
+        if (prev && (hs > prev.h || as > prev.a) && gwWanted(g, mode)) { gwGoal(g, hs > prev.h ? g.home.name : g.away.name); }
+        GW.last[k] = { h: hs, a: as };
+      });
+      if (full) { Object.keys(GW.last).forEach(function (k) { if (!liveNow[k]) { delete GW.last[k]; } }); GW.scanAt = now; }
+      GW.leagues = Object.keys(leagues);
+    }).then(function () { GW.busy = false; }, function () { GW.busy = false; });
+  }
+  function goalBlock() {
+    var cur = goalMode(), opts = [['Todos os jogos ao vivo', 'all'], ['Meus times e Brasil', 'mine'], ['Desligado', 'off']], box = h('div', { cls: 'sbtns scales' });
+    function paint() {
+      box.innerHTML = '';
+      opts.forEach(function (o) {
+        box.appendChild(h('button', { cls: 'f btn' + (cur === o[1] ? ' primary' : ''), text: o[0], on: { click: function () {
+          cur = o[1]; store.set('goalalert', cur); paint(); toast(cur === 'off' ? 'Aviso de gols desligado' : 'Vai avisar os gols enquanto o app estiver aberto', 2400);
+        } } }));
+      });
+    }
+    paint();
+    return box;
   }
 
   function spInit() {
@@ -2864,7 +2926,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.36.4']
+      ['Versão do app', '1.37.0']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -2888,6 +2950,8 @@
     page.appendChild(sgroup('Preferências'));
     page.appendChild(h('div', { cls: 'sgroup sub', text: 'Versão preferida (dublado/legendado)' }));
     page.appendChild(verBlock());
+    page.appendChild(h('div', { cls: 'sgroup sub', text: 'Aviso de gols (pop-up com o placar, enquanto o app está aberto)' }));
+    page.appendChild(goalBlock());
     page.appendChild(h('div', { cls: 'sgroup sub', text: 'Estilo da tela inicial (neste aparelho)' }));
     page.appendChild(homeStyleBlock());
     page.appendChild(switchRow('Reproduzir o último conteúdo ao abrir o app', 'Ao iniciar, retoma o último canal, filme ou episódio assistido.', 'autoplay'));
@@ -3860,5 +3924,7 @@
     if (cfg && cfg.server) { S.cfg = cfg; connect(cfg, { boot: true }); } else { showLogin(); }
   }
 
+  setInterval(gwTick, 45000);
+  setTimeout(gwTick, 15000);
   if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', boot); } else { boot(); }
 })();
