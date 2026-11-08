@@ -162,7 +162,8 @@
   function metaLine(parts) { return parts.filter(function (x) { return x; }).join('  ·  '); }
   function opt(k) { return !!S.opts[k]; }
   function pvOn() {
-    if (S.opts.heropv === undefined) { S.opts.heropv = !document.body.classList.contains('touch'); store.set('opts', S.opts); }
+    if (window.__pvTest) { return true; }
+    if (S.opts.pvv !== 2) { S.opts.pvv = 2; S.opts.heropv = false; store.set('opts', S.opts); }   // 1.34.4: recurso experimental, desligado por padrão
     return !!S.opts.heropv;
   }
   function setOpt(k, v) { S.opts[k] = !!v; store.set('opts', S.opts); if (k === 'bgplay') { applyBg(); } }
@@ -2788,7 +2789,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.34.3']
+      ['Versão do app', '1.34.4']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
@@ -2817,8 +2818,8 @@
     page.appendChild(switchRow('Reproduzir o último conteúdo ao abrir o app', 'Ao iniciar, retoma o último canal, filme ou episódio assistido.', 'autoplay'));
     if (hasBg()) { page.appendChild(switchRow('Continuar tocando com a tela bloqueada', 'O áudio segue tocando ao bloquear o celular ou sair do app (aparece uma notificação enquanto toca).', 'bgplay')); }
     pvOn();
-    page.appendChild(switchRow('Prévia no banner da Início', 'Depois de alguns segundos parado no banner, toca um trecho do filme ou série sem som; vale também para os cards das listas e o Continuar assistindo (após ~2 s com o foco no card). Usa uma conexão do seu provedor e dados móveis no celular.', 'heropv'));
-    [
+    page.appendChild(switchRow('Prévia de vídeo (experimental)', 'Toca um trecho mudo do filme/série no banner e nos cards depois de alguns segundos parado. Pode não funcionar em algumas TVs, usa uma conexão do provedor e deixa o app mais pesado.', 'heropv'));
+    if (opt('heropv')) [
       'Diagnóstico da prévia — foco em filmes/séries: ' + PD.foco + ' · agendadas: ' + PD.agendadas + ' · iniciadas: ' + PD.iniciadas + ' · tocando: ' + PD.tocando + (PD.bloqueio ? ' · bloqueio: ' + PD.bloqueio : ''),
       PD.falha ? 'Última falha: ' + PD.falha : '',
       PD.ultima ? 'Interrompida: ' + PD.ultima : ''

@@ -107,6 +107,7 @@ Promise.all([listen(api), listen(px), startSync()]).then(function () {
     }).then(function () {
       assert.deepStrictEqual($$('.hubtab').map(function (e) { return e.textContent; }), ['TV ao vivo', 'Filmes', 'Séries', 'Esportes']);
       assert.ok($('.hubtab.focus'), 'foco no primeiro item do menu');
+      w.__pvTest = true;
       return waitFor(function () { return $('.herotitle') && $('.herotitle').textContent; }, 'banner de destaque');
     }).then(function () {
       assert.ok(/Filme Teste/.test($('.herotitle').textContent), 'banner mostra um destaque do catálogo');

@@ -128,3 +128,6 @@ A prévia agora começa do início do vídeo e só pula para o meio depois de j�
 
 ## Prévia: interrupção x falha (1.34.3)
 Cancelar a prévia (tecla, troca de slide) não conta mais como falha ("AbortError" era causado pelo próprio app). O diagnóstico agora tem 3 linhas: contadores, última falha real e "Interrompida", com o tempo (t+Ns) e os eventos do vídeo até o cancelamento, para ver se o servidor demora a responder.
+
+## Prévia de vídeo: experimental e desligada (1.34.4)
+Na LG real a prévia carrega só às vezes (servidor lento / play cortado) e deixa o app mais pesado, então virou "Prévia de vídeo (experimental)" em Configurações, **desligada por padrão** (a 1.34.4 desliga também em quem já tinha ligada). O diagnóstico só aparece com a chave ligada.
