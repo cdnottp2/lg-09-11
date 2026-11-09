@@ -168,3 +168,11 @@ A programação de cada canal fica guardada por horas; se o provedor só atualiz
 
 ## Canais do jogo não se perdem mais por falha do provedor (1.37.2)
 A varredura de canais (até 160 consultas de programação) trocava o resultado anterior pelo novo; se o provedor falhasse ou demorasse em alguns canais, a falha era guardada como "canal sem programação" e o jogo perdia o canal que já tinha sido achado. Agora, falha de consulta não sobrescreve a programação guardada e, se o canal falhou nesta rodada, o link que já existia para o jogo é mantido.
+
+## Avatares ilustrados e perfis maiores (1.38.0)
+- **32 avatares originais** (SVG em `app/js/avatars.js`), em 4 grupos de 8 como numa galeria: Bichinhos, Robôs, Monstrinhos e Aventureiros. No editor de perfil o seletor mostra as fileiras por tema; "Simples" mantém a inicial do nome (com as cores). Perfis antigos com os ícones de linha continuam funcionando.
+- **Perfis maiores:** quadrados grandes (TV 250 px; antes 190) com leve degradê, nome maior e o editor com rolagem pelo direcional. As cores só aparecem quando o avatar é a inicial (os ilustrados já têm cor própria).
+- O avatar escolhido também aparece no topo da Início.
+
+## 1.38.1 — Avatares de cachorros
+- Novo grupo **Cachorros** no editor de perfil, com 8 raças diferentes: Labrador, Husky, Dálmata, Pug, Beagle, Poodle, Shih Tzu e Vira-lata caramelo.

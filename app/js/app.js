@@ -583,9 +583,13 @@
   /* avatar: a inicial do nome ou um dos ícones (campo "icon" do perfil) */
   var AVICONS = ['av_smile', 'av_cat', 'av_paw', 'av_ghost', 'av_rocket', 'av_bolt', 'av_heart', 'av_crown', 'av_game', 'av_music', 'av_ball', 'av_moon'];
   function avSet(el, p) {
-    var ic = p.icon && ICONS[p.icon] ? p.icon : '';
+    var art = !!(p.icon && window.Avatars && Avatars.has(p.icon));
+    var ic = !art && p.icon && ICONS[p.icon] ? p.icon : '';
     while (el.firstChild && !(el.firstChild.className === 'pedit')) { el.removeChild(el.firstChild); }
-    var node = ic ? icon(ic, 60) : h('span', { text: profInitial(p) });
+    var node;
+    if (art) { node = h('span', { cls: 'art' }); node.innerHTML = Avatars.svg(p.icon); }
+    else { node = ic ? icon(ic, 60) : h('span', { text: profInitial(p) }); }
+    el.classList.toggle('hasart', art);
     el.insertBefore(node, el.firstChild);
     return el;
   }
@@ -634,7 +638,7 @@
   }
 
   function profAvatar(p, big, manage) {
-    var el = h('div', { cls: 'pav' + (big ? ' big' : ''), style: 'background:' + PCOLORS[p.color % PCOLORS.length] },
+    var el = h('div', { cls: 'pav' + (big ? ' big' : ''), style: 'background-color:' + PCOLORS[p.color % PCOLORS.length] },
       manage ? [h('div', { cls: 'pedit' }, [icon('pencil', 34)])] : []);
     return avSet(el, p);
   }
@@ -677,9 +681,19 @@
       var b = h('button', { cls: 'f swatch', type: 'button', style: 'background:' + c, on: { click: function () { p.color = i; paint(); } } });
       swBtns.push(b); sw.appendChild(b);
     });
-    [''].concat(AVICONS).forEach(function (k) {
-      var b = avSet(h('button', { cls: 'f aicon', type: 'button', title: k ? 'Ícone' : 'Inicial do nome', on: { click: function () { p.icon = k; paint(); } } }), { name: p.name, icon: k });
-      b._k = k; icBtns.push(b); ics.appendChild(b);
+    function addTile(box, k, name) {
+      var b = avSet(h('button', { cls: 'f aicon' + (k ? ' art' : ''), type: 'button', title: name, on: { click: function () { p.icon = k; paint(); } } }), { name: p.name, icon: k });
+      b._k = k; icBtns.push(b); box.appendChild(b);
+    }
+    var first = h('div', { cls: 'pgrow' });
+    addTile(first, '', 'Inicial do nome');
+    ics.appendChild(h('div', { cls: 'pgtitle', text: 'Simples (a inicial do nome)' }));
+    ics.appendChild(first);
+    Avatars.GROUPS.forEach(function (g) {
+      ics.appendChild(h('div', { cls: 'pgtitle', text: g.name }));
+      var row = h('div', { cls: 'pgrow' });
+      g.items.forEach(function (it) { addTile(row, it.key, it.name); });
+      ics.appendChild(row);
     });
     function paint() {
       swBtns.forEach(function (b, i) { b.classList.toggle('on', i === p.color); });
@@ -688,7 +702,8 @@
         if (!b._k) { avSet(b, { name: p.name, icon: '' }); }
       });
       avSet(preview, p);
-      preview.style.background = PCOLORS[p.color];
+      preview.style.backgroundColor = PCOLORS[p.color];
+      sw.style.display = (p.icon && window.Avatars && Avatars.has(p.icon)) ? 'none' : '';
     }
     paint();
     input.addEventListener('input', function () { p.name = input.value || '?'; paint(); });
@@ -1530,7 +1545,7 @@
       hd.appendChild(h('button', { cls: 'f iconbtn menubtn', type: 'button', title: 'Menu', 'aria-label': 'Menu',
         on: { click: openDrawer } }, [icon('menu', 28)]));
       hd.appendChild(h('div', { cls: 'brand', text: 'MASTER IPTV' }));
-      hd.appendChild(avSet(h('button', { cls: 'f avatar', type: 'button', style: 'background:' + PCOLORS[prof.color % PCOLORS.length],
+      hd.appendChild(avSet(h('button', { cls: 'f avatar', type: 'button', style: 'background-color:' + PCOLORS[prof.color % PCOLORS.length],
         on: { click: function () { showProfiles(true); } } }), prof));
       loadWeather();
       updateDrawerInfo();
@@ -2961,7 +2976,7 @@
       ['Status', info.status || ''],
       ['Validade', info.exp ? info.exp.toLocaleDateString('pt-BR') : '—'],
       ['Conexões simultâneas', info.maxConn || '—'],
-      ['Versão do app', '1.37.2']
+      ['Versão do app', '1.38.1']
     ];
     page.appendChild(sgroup('Conta'));
     rows.forEach(function (r) {
